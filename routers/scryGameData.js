@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 
+//This route is for supplying basic game data to players
+
 router.get("/", (req, res) => {
     const scryGameDataResponse = {
         eventNum: req.app.locals.scryCurrentEvent.eventNum,

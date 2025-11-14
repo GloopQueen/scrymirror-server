@@ -1,11 +1,23 @@
 const express = require("express");
 const router = express.Router();
 
+//Supply the current Answers Map
+//TODO: this whole damn thing needs data validatino everywhere or it's gonna keep exploding
+router.get("/currentAnswersMap", (req, res) => {
+    if (req.body.gameControllerKey != req.app.locals.gameControllerKey) {
+        res.status(400);
+        res.send("Invalid Game Controller Key.");
+    } else {
+        res.status(200);
+        res.send(req.app.locals.scryCurrentAnswersMap);
+    }
+});
+
 //Start a new Event based on the Game Controller's data
 router.post("/newEvent", (req, res) => {
     //TODO: this absolutely needs some data validation
     const response = {
-        msg: req.body,
+        msg: "",
         error: false,
         tellUser: false, //Turn on to show error text to player
     };
@@ -38,6 +50,7 @@ router.post("/newEvent", (req, res) => {
         req.app.locals.scryCurrentEvent.eventNum =
             req.app.locals.scryCurrentEvent.eventNum + 1;
         req.app.locals.scryCurrentEvent.isActive = true;
+        res.msg = req.app.locals.scryCurrentEvent;
         console.log(
             `Starting Event number ${req.app.locals.scryCurrentEvent.eventNum}.`,
         );
