@@ -14,12 +14,21 @@ app.use("/scryEvents/", scryEvents); //Handles all Events on the player end
 app.use("/scryGameControl/", scryGameControl);
 
 //Admin key
-//TODO: This is going to need to be totally redone
-//There's gotta be a system here to match a list of gamecontrollerkeys to people we gave keys to
-app.locals.gameControllerKey = 69420;
+// Old:
+//app.locals.gameControllerKey = 69420;
+// NEW: Key Database. Lists Keys and who they belong to.
+app.locals.keyDB = {};
+app.locals.keyDB.GloopQueen = {
+    key: 69420,
+    isRunning: false,
+};
 
+app.locals.gamesDB = {};
+
+//temporary while I move everything over
+app.locals.debug = {};
 //THE Event object. Everything necessary for the client to display and run an event
-app.locals.scryCurrentEvent = {
+app.locals.debug.scryCurrentEvent = {
     eventNum: 7,
     isActive: true,
     verb: "voted",
@@ -40,17 +49,17 @@ app.locals.scryCurrentEvent = {
 };
 
 //Populates with Answers from players.
-app.locals.scryCurrentAnswersMap = {};
+app.locals.debug.scryCurrentAnswersMap = {};
 
 //the Event Archive object. Contains past rounds named by Event ID number, split into eventData and answers
 //TODO: Learn mongodb lmfao (the past Event or two should stil be accessible easily/quickly for scoring)
-app.locals.scryEventArchive = {};
+app.locals.debug.scryEventArchive = {};
 
 //Game Variables Obect.
 //Changes "on the fly" depending on a game's need.
 //Should always have a label, a value, and a type
 //(there's probably a better way to do type than me ramming it in here lol)
-app.locals.scryGameVars = {
+app.locals.debug.scryGameVars = {
     teamA: {
         label: "Team A",
         value: 6,
