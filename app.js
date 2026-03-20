@@ -2,6 +2,8 @@ const Joi = require("joi");
 const express = require("express");
 const app = express();
 const cors = require("cors");
+const PouchDB = require("pouchdb");
+PouchDB.plugin(require("pouchdb-find"));
 const scryGameData = require("./routers/scryGameData");
 const scryEvents = require("./routers/scryEvents");
 const scryGameControl = require("./routers/scryGameControl");
@@ -11,17 +13,33 @@ app.use(express.json());
 app.use(cors());
 app.use("/scryGameData/", scryGameData); //Supplies basic game data to players
 app.use("/scryEvents/", scryEvents); //Handles all Events on the player end
-app.use("/scryGameControl/", scryGameControl);
+app.use("/scryGameControl/", scryGameControl); // Lets 'Game Controllers" edit a game.
+
+//Setup Databases
+const couchDBURL = "http://192.168.86.45:5984/";
+app.locals.scryKeyDB = new PouchDB(couchDBURL + "scryKeyDB");
+app.locals.scryActiveGameDB = new PouchDB(couchDBURL + "scryActiveGameDB");
+
+//Poke the DBs just to make sure we're up
+app.locals.scryKeyDB.info().then((info) => {
+    console.log(`Connected to Key DB, which has ${info.doc_count} entries.`);
+});
+app.locals.scryActiveGameDB.info().then((info) => {
+    console.log(
+        `Connected to Active Games DB, which has ${info.doc_count} entries.`,
+    );
+});
 
 //Admin key
+// TODO: oh you sooo need to be a database girlypop
 // Old:
 //app.locals.gameControllerKey = 69420;
 // NEW: Key Database. Lists Keys and who they belong to.
-app.locals.keyDB = {};
-app.locals.keyDB.GloopQueen = {
-    key: 69420,
-    isRunning: false,
-};
+//app.locals.keyDB = {};
+//app.locals.keyDB.GloopQueen = {
+//    key: 69420,
+//    isRunning: false,
+//};
 
 app.locals.gamesDB = {};
 
@@ -92,5 +110,5 @@ function isThisInvalidAndWhy(course) {
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
-    console.log(`listening on port ${port}.`);
+    console.log(`Listening on port ${port}.`);
 });

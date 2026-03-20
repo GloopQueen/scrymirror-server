@@ -76,50 +76,119 @@ router.post("/newGame", (req, res) => {
         error: false,
     };
 
-    //Check for the admin key. Turn this into a function you're gonna do it a bunch.
-    creatorName = req.body.creatorName;
-    if (req.body.key != req.app.locals.keyDB[creatorName].key) {
-        response.error = true;
-        response.msg = "Incorrect Game Controller Name or key.";
+    // NEW KEYDB CHECK Code
+    //Search the keyDB for the name
+    req.app.locals.scryKeyDB
+        .find({
+            selector: {
+                name: req.body.creatorName,
+            },
+        })
+        .then((result) => {
+            //check for only one valid answer
+            if (Object.hasOwn(result, "docs") && result.docs.length == 1) {
+                //Yep, only one name
+                //check if key matches
+                userDeets = result.docs[0];
+                if (userDeets.scryKey == req.body.key) {
+                    //check if game is running
+                    if (userDeets.isRunning == false) {
+                        response.error = false;
+                        console.log("All key checks passed.");
+                        //SET ISRUNNING TO TRUE and put it on the server
+                        userDeets.isRunning = true;
+                        req.app.locals.scryKeyDB.put(userDeets);
+                    } else {
+                        response.error = true;
+                        response.msg =
+                            "A game is already running for this name.";
+                    }
+                } else {
+                    response.error = true;
+                    response.msg = "Key doesn't match.";
+                }
+                //check if game is running
+            } else {
+                //Nope, username didn't match.
+                response.error = true;
+                response.msg = "Incorrect Game Controller Name.";
+            }
+            //Now that key validation has finished, kickoff next setup based on results.
+            setupGame(response.error);
+        });
+
+    //Setting up the game/responding to the req are in separate functions for async promise reasons.
+    //
+    function setupGame(isThereAnError) {
+        console.log("I'm after the promise");
+
+        if (isThereAnError == false) {
+            //Make a new active game DB entry with a date.
+            const d = Date.now();
+            const newCode = generateCode(6);
+            newGameInfo = {
+                _id: req.body.creatorName,
+                creationTime: d,
+                joinCode: newCode,
+                currentEvent: {},
+                eventNum: 0,
+                isActive: false,
+            };
+            response.joinCode = newCode;
+            //TODO: hey this might throw an error!
+            req.app.locals.scryActiveGameDB.put(newGameInfo).then((result) => {
+                console.log(`Game Created:${result}`);
+            });
+        } else {
+            //the failure condition code
+            //PICK BACK UP HERE PICK BACK UP HERE
+        }
+
+        sendResponse();
+
+        //btw when you inevitably need it here's how to un-epoch that epoch
+        // const date = new Date(d);
+        //console.log(date.toLocaleString());
+
+        //finish the party
+        /* OLD PLEASE REMOVE
+        if (response.error == false) {
+            //Create the game!
+
+            //Flag that there's a game in use for this key.
+            req.app.locals.keyDB[creatorName].isActive = true;
+
+            // Generate a game ID and a join code.
+            // TODO make sure these don't double dip.
+            newGameID = generateHex(12);
+            req.app.locals.gamesDB[newGameID] = {};
+            req.app.locals.gamesDB[newGameID].joinCode = generateCode(6);
+            req.app.locals.gamesDB[newGameID].scryCurrentEvent = {}; //Establish the thing
+            req.app.locals.gamesDB[newGameID].scryCurrentEvent.eventNum = 0; //zero event number means we're not fully started.
+
+            response.gameID = newGameID;
+            response.joinCode = req.app.locals.gamesDB[newGameID].joinCode;
+
+            //setup a good response
+            console.log(
+                `Game Created by ${creatorName}: Number ${response.gameID} Join Code ${response.joinCode}`,
+            );
+            res.status(200);
+        } else {
+            //setup a bad response
+            res.status(400);
+            console.log(
+                `Err on Game Controller creating new Game: ${response.msg}`,
+            );
+        }
+        */
+        //res.send(response);
     }
 
-    //Check if there's already a game running
-    if (req.app.locals.keyDB[creatorName].isActive == true) {
-        response.error = true;
-        response.msg = "A game is already running for this username.";
+    function sendResponse() {
+        console.log("Sending Response.");
+        res.send(response);
     }
-
-    //finish the party
-    if (response.error == false) {
-        //Create the game!
-
-        //Flag that there's a game in use for this key.
-        req.app.locals.keyDB[creatorName].isActive = true;
-
-        // Generate a game ID and a join code.
-        // TODO make sure these don't double dip.
-        newGameID = generateHex(12);
-        req.app.locals.gamesDB[newGameID] = {};
-        req.app.locals.gamesDB[newGameID].joinCode = generateCode(6);
-        req.app.locals.gamesDB[newGameID].scryCurrentEvent = {}; //Establish the thing
-        req.app.locals.gamesDB[newGameID].scryCurrentEvent.eventNum = 0; //zero event number means we're not fully started.
-
-        response.gameID = newGameID;
-        response.joinCode = req.app.locals.gamesDB[newGameID].joinCode;
-
-        //setup a good response
-        console.log(
-            `Game Created by ${creatorName}: Number ${response.gameID} Join Code ${response.joinCode}`,
-        );
-        res.status(200);
-    } else {
-        //setup a bad response
-        res.status(400);
-        console.log(
-            `Err on Game Controller creating new Game: ${response.msg}`,
-        );
-    }
-    res.send(response);
 });
 
 function generateHex(length) {
