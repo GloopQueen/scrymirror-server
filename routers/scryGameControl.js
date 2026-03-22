@@ -68,13 +68,16 @@ router.post("/newEvent", (req, res) => {
     }
 });
 
-//Create a new Game
-router.post("/newGame", (req, res) => {
+//Putting all my admin command eggs in the one bucket
+router.post("/gameControllerCommand", (req, res) => {
     //TODO: this absolutely needs some data validation
     const response = {
         msg: "",
         error: false,
     };
+
+    //user data we pull from the database will be stored here and used across a few functions
+    userDeets = {};
 
     // NEW KEYDB CHECK Code
     //Search the keyDB for the name
@@ -91,60 +94,42 @@ router.post("/newGame", (req, res) => {
                 //check if key matches
                 userDeets = result.docs[0];
                 if (userDeets.scryKey == req.body.key) {
-                    //check if game is running
-                    if (userDeets.isRunning == false) {
-                        response.error = false;
-                        console.log("All key checks passed.");
-                        //SET ISRUNNING TO TRUE and put it on the server
-                        userDeets.isRunning = true;
-                        req.app.locals.scryKeyDB.put(userDeets);
-                    } else {
-                        response.error = true;
-                        response.msg =
-                            "A game is already running for this name.";
-                    }
+                    //check if there's a command
                 } else {
                     response.error = true;
                     response.msg = "Key doesn't match.";
                 }
-                //check if game is running
             } else {
                 //Nope, username didn't match.
                 response.error = true;
                 response.msg = "Incorrect Game Controller Name.";
             }
+
+            const newObj = {};
+            if (Object.hasOwn(req.body, "object")) {
+                newObj = req.body.object;
+            }
+
             //Now that key validation has finished, kickoff next setup based on results.
-            setupGame(response.error);
+            if (response.error == true) {
+                sendResponse();
+            } else {
+                processRequest(req.body.command, newObj);
+            }
         });
 
     //Setting up the game/responding to the req are in separate functions for async promise reasons.
-    //
-    function setupGame(isThereAnError) {
+    function processRequest(command, incomingObject) {
         console.log("I'm after the promise");
 
-        if (isThereAnError == false) {
-            //Make a new active game DB entry with a date.
-            const d = Date.now();
-            const newCode = generateCode(6);
-            newGameInfo = {
-                _id: req.body.creatorName,
-                creationTime: d,
-                joinCode: newCode,
-                currentEvent: {},
-                eventNum: 0,
-                isActive: false,
-            };
-            response.joinCode = newCode;
-            //TODO: hey this might throw an error!
-            req.app.locals.scryActiveGameDB.put(newGameInfo).then((result) => {
-                console.log(`Game Created:${result}`);
-            });
-        } else {
-            //the failure condition code
-            //PICK BACK UP HERE PICK BACK UP HERE
+        if (command == "startGame") {
+            startGame();
+            console.log("startgame!");
         }
-
-        sendResponse();
+        if (command == "stopGame") {
+            stopGame();
+            console.log("stopgame!");
+        }
 
         //btw when you inevitably need it here's how to un-epoch that epoch
         // const date = new Date(d);
@@ -188,6 +173,60 @@ router.post("/newGame", (req, res) => {
     function sendResponse() {
         console.log("Sending Response.");
         res.send(response);
+    }
+
+    //Function to start a Game
+    //TODO: Start and stop currently play dangerous with assuming ActiveGamesDB matches isRunning on the KeyDB.
+    function startGame() {
+        if (userDeets.isRunning == false) {
+            //SET ISRUNNING TO TRUE and put it on the server
+            userDeets.isRunning = true;
+            req.app.locals.scryKeyDB.put(userDeets);
+            //Get a game running
+            //Make a new active game DB entry with a date.
+            const d = Date.now();
+            const newCode = generateCode(6);
+            newGameInfo = {
+                _id: req.body.creatorName,
+                creationTime: d,
+                joinCode: newCode,
+                currentEvent: {},
+                eventNum: 0,
+                isActive: false,
+            };
+            response.joinCode = newCode;
+            //TODO: hey this might throw an error!
+            req.app.locals.scryActiveGameDB.put(newGameInfo).then((result) => {
+                console.log(`Game Created:${result}`);
+                sendResponse(); //answer finally
+            });
+        } else {
+            response.error = true;
+            response.msg = "A game is already running for this name.";
+            sendResponse();
+        }
+    }
+
+    function stopGame() {
+        if (userDeets.isRunning == true) {
+            // set isRunning to false and put it on the server
+            userDeets.isRunning = false;
+            console.log("this ran!");
+            req.app.locals.scryKeyDB.put(userDeets);
+            //Delete the game.
+            // TODO: hey this doesn't handle errors girlypop
+            req.app.locals.scryActiveGameDB
+                .get(req.body.creatorName)
+                .then((result) => {
+                    req.app.locals.scryActiveGameDB.remove(result);
+                    console.log(`Game To Remove:${result._id}`);
+                    sendResponse(); //answer finally
+                });
+        } else {
+            response.error = true;
+            response.msg = "There's no game active for this key owner.";
+            sendResponse();
+        }
     }
 });
 
