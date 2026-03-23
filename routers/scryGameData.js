@@ -3,8 +3,9 @@ const router = express.Router();
 
 //This route is for supplying basic game data to players
 /*r */
-router.get("/", (req, res) => {
+router.post("/", (req, res) => {
     //TODO: Make this only hit the database For Real if some time has passed, so we don't spam it.
+    gameInfo = {};
     response = {
         error: false,
         msg: "",
@@ -17,20 +18,71 @@ router.get("/", (req, res) => {
             },
         })
         .then((result) => {
-            answer = result.docs[0];
-            response.eventNum = answer.eventNum;
-            response.scoreVars = answer.scoreVars;
-            response.isActive = answer.isActive;
-            response.gameOwnerName = answer._id;
-            res.send(response);
+            gameInfo = result.docs[0];
+            response.eventNum = gameInfo.eventNum;
+            response.scoreVars = gameInfo.scoreVars;
+            response.isActive = gameInfo.isActive;
+            response.gameOwnerName = gameInfo._id;
+            if (req.body.fullUpdate == true) {
+                response.currentEvent = gameInfo.currentEvent;
+            }
+
+            sendResponse();
         })
         .catch((err) => {
             console.log(err);
             response.error = true;
             response.msg =
                 "There was an error retrieving info for that join code.";
-            res.send(response);
+            sendResponse();
         });
+
+    function sendResponse() {
+        res.send(response);
+    }
+});
+
+router.put("/", (req, res) => {
+    gameInfo = {};
+    response = {
+        error: false,
+        msg: "",
+    };
+
+    req.app.locals.scryActiveGameDB
+        .find({
+            selector: {
+                joinCode: req.body.joinCode,
+            },
+        })
+        .then((result) => {
+            gameInfo = result.docs[0];
+            newAnswer = req.body;
+            //this should probably get culled on the client instead but ehhhhhh. eh
+            if (Object.hasOwn(newAnswer, "sentStatus")) {
+                delete newAnswer.sentStatus;
+            }
+            gameInfo.currentAnswersMap.push(newAnswer);
+
+            //TODO: hey this might throw an error!
+            req.app.locals.scryActiveGameDB.put(gameInfo).then((result) => {
+                console.log(
+                    `New Answer on ${gameInfo._id}'s Game, Event #${gameInfo.eventNum}. ${gameInfo.currentAnswersMap.length} Answers total.`,
+                );
+                sendResponse(); //answer finally
+            });
+        })
+        .catch((err) => {
+            console.log(err);
+            response.error = true;
+            response.msg =
+                "There was an error retrieving info for that join code.";
+            sendResponse();
+        });
+
+    function sendResponse() {
+        res.send(response);
+    }
 });
 
 module.exports = router;

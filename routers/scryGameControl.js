@@ -1,20 +1,6 @@
 const express = require("express");
 const router = express.Router();
 
-//Bad ask example. Leaving this code here as reference.
-router.post("/badActiveGame", (req, res) => {
-    req.app.locals.scryActiveGameDB
-        .get("bungulus")
-        .then((result) => {
-            console.log(result);
-            res.send(result);
-        })
-        .catch((err) => {
-            console.log(err);
-            res.send(err);
-        });
-});
-
 //Putting all my admin command eggs in the one bucket
 router.post("/gameControllerCommand", (req, res) => {
     //TODO: this absolutely needs some data validation
@@ -71,11 +57,11 @@ router.post("/gameControllerCommand", (req, res) => {
 
         if (command == "startGame") {
             startGame();
-            console.log("startgame!");
+            //console.log("startgame!");
         }
         if (command == "stopGame") {
             stopGame();
-            console.log("stopgame!");
+            //console.log("stopgame!");
         }
         if (command == "newEvent") {
             newEvent(incomingObject);
@@ -86,10 +72,13 @@ router.post("/gameControllerCommand", (req, res) => {
         if (command == "stopEvent") {
             startStopEvent(false);
         }
+        if (command == "getAnswers") {
+            getAnswers();
+        }
     }
 
     function sendResponse() {
-        console.log("Sending Response.");
+        //console.log("Sending Response.");
         res.send(response);
     }
 
@@ -173,6 +162,23 @@ router.post("/gameControllerCommand", (req, res) => {
             });
     }
 
+    function getAnswers() {
+        req.app.locals.scryActiveGameDB
+            .get(req.body.creatorName)
+            .then((gameInfo) => {
+                // TODO: Archive old event!
+                // Iterate the event number, attach the new specific data, save, and send the answer.
+                response.currentAnswersMap = gameInfo.currentAnswersMap;
+                sendResponse();
+            })
+            .catch((err) => {
+                response.error = true;
+                response.msg = "There was an error retrieving the answers.";
+                console.log(err);
+                sendResponse();
+            });
+    }
+
     function startStopEvent(isRunningChange) {
         req.app.locals.scryActiveGameDB
             .get(req.body.creatorName)
@@ -204,15 +210,21 @@ router.post("/gameControllerCommand", (req, res) => {
     }
 });
 
-function generateHex(length) {
-    let letters = "0123456789ABCDEF";
-    let hexResponse = "";
+//Bad ask example. Leaving this code here as reference.
+router.post("/badActiveGame", (req, res) => {
+    req.app.locals.scryActiveGameDB
+        .get("bungulus")
+        .then((result) => {
+            console.log(result);
+            res.send(result);
+        })
+        .catch((err) => {
+            console.log(err);
+            res.send(err);
+        });
+});
 
-    for (let i = 0; i < length; i++) {
-        hexResponse += letters[Math.floor(Math.random() * 16)];
-    }
-    return hexResponse;
-}
+module.exports = router;
 
 function generateCode(length) {
     let letters = "FHLQRSWXY2456789"; //Dude I am trying so hard to make it never spell a potty word
@@ -224,10 +236,7 @@ function generateCode(length) {
     return codeResponse;
 }
 
-module.exports = router;
-
 // ==== GRAVE YARD ===
-
 //OLD REMOVE ME IT'S IN THE CONTROL ROUTER. -- Start a new Event based on the Game Controller's data
 /* router.post("/newEvent", (req, res) => {
     //TODO: this absolutely needs some data validation
@@ -294,3 +303,14 @@ module.exports = router;
             res.send(req.app.locals.debug.scryCurrentAnswersMap);
         }
     }); */
+
+/*
+    function generateHex(length) {
+        let letters = "0123456789ABCDEF";
+        let hexResponse = "";
+
+        for (let i = 0; i < length; i++) {
+            hexResponse += letters[Math.floor(Math.random() * 16)];
+        }
+        return hexResponse;
+        }*/

@@ -30,17 +30,6 @@ app.locals.scryActiveGameDB.info().then((info) => {
     );
 });
 
-//Admin key
-// TODO: oh you sooo need to be a database girlypop
-// Old:
-//app.locals.gameControllerKey = 69420;
-// NEW: Key Database. Lists Keys and who they belong to.
-//app.locals.keyDB = {};
-//app.locals.keyDB.GloopQueen = {
-//    key: 69420,
-//    isRunning: false,
-//};
-
 app.locals.gamesDB = {};
 
 //temporary while I move everything over
@@ -94,8 +83,9 @@ app.get("/", (req, res) => {
     res.send("Hello World!");
 });
 
+//Keeping just for the Joi reference, is not used right now.
 //returns false; otherwise returns text of error.
-function isThisInvalidAndWhy(course) {
+/* function isThisInvalidAndWhy(course) {
     const schema = Joi.object({
         name: Joi.string().min(3).required(),
     });
@@ -106,7 +96,7 @@ function isThisInvalidAndWhy(course) {
         return validationResult.error.message;
     }
     return false;
-}
+}*/
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
