@@ -53,8 +53,6 @@ router.post("/gameControllerCommand", (req, res) => {
 
     //Setting up the game/responding to the req are in separate functions for async promise reasons.
     function processRequest(command, incomingObject) {
-        console.log("I'm after the promise");
-
         if (command == "startGame") {
             startGame();
             //console.log("startgame!");
@@ -74,6 +72,9 @@ router.post("/gameControllerCommand", (req, res) => {
         }
         if (command == "getAnswers") {
             getAnswers();
+        }
+        if (command == "clearAnswers") {
+            clearAnswers();
         }
     }
 
@@ -166,14 +167,31 @@ router.post("/gameControllerCommand", (req, res) => {
         req.app.locals.scryActiveGameDB
             .get(req.body.creatorName)
             .then((gameInfo) => {
-                // TODO: Archive old event!
-                // Iterate the event number, attach the new specific data, save, and send the answer.
                 response.currentAnswersMap = gameInfo.currentAnswersMap;
                 sendResponse();
             })
             .catch((err) => {
                 response.error = true;
                 response.msg = "There was an error retrieving the answers.";
+                console.log(err);
+                sendResponse();
+            });
+    }
+
+    function clearAnswers() {
+        req.app.locals.scryActiveGameDB
+            .get(req.body.creatorName)
+            .then((gameInfo) => {
+                gameInfo.currentAnswersMap = [];
+                req.app.locals.scryActiveGameDB.put(gameInfo).then((result) => {
+                    console.log(`Cleared Answers in ${gameInfo._id}'s Game.`);
+                    response.isActive = gameInfo.isActive;
+                    sendResponse(); //answer finally
+                });
+            })
+            .catch((err) => {
+                response.error = true;
+                response.msg = "There was an error clearing the answers.";
                 console.log(err);
                 sendResponse();
             });

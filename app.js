@@ -40,7 +40,7 @@ app.locals.debug.scryCurrentEvent = {
     isActive: true,
     verb: "voted",
     type: "multiChoice",
-    questionText: "Which of these was not developed by Game Freak?",
+    questionText: "I'm the old qustion? Ignore me?",
     options: [
         { value: "check", label: "Drill Dozer" },
         { value: "fold", label: "Pulseman" },
