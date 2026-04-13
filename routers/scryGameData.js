@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 //This route is for supplying basic game data to players
-/*r */
+
 router.post("/", (req, res) => {
     //TODO: Make this only hit the database For Real if some time has passed, so we don't spam it.
     gameInfo = {};

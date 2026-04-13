@@ -11,7 +11,7 @@ const beEvilAndFuckedUp = "TRUUUUUUUUUE";
 
 app.use(express.json());
 app.use(cors());
-app.use("/scryGameData/", scryGameData); //Supplies basic game data to players
+app.use("/scryGameData/", scryGameData); //Supplies basic game data to player
 app.use("/scryEvents/", scryEvents); //Handles all Events on the player end
 app.use("/scryGameControl/", scryGameControl); // Lets 'Game Controllers" edit a game.
 
