@@ -103,6 +103,7 @@ router.post("/gameControllerCommand", (req, res) => {
                 isActive: false,
                 currentAnswersMap: [],
                 scoreVars: {},
+                eventArchive: {},
             };
             response.joinCode = newCode;
             //TODO: hey this might throw an error!
@@ -143,8 +144,17 @@ router.post("/gameControllerCommand", (req, res) => {
         req.app.locals.scryActiveGameDB
             .get(req.body.creatorName)
             .then((gameInfo) => {
-                // TODO: Archive old event!
-                // Iterate the event number, attach the new specific data, save, and send the answer.
+                // Archive old event
+                if (gameInfo.eventNum > 0) {
+                    gameInfo.eventArchive[gameInfo.eventNum] = {};
+                    gameInfo.eventArchive[gameInfo.eventNum].event =
+                        gameInfo.currentEvent;
+                    gameInfo.eventArchive[gameInfo.eventNum].currentAnswersMap =
+                        gameInfo.currentAnswersMap;
+                }
+                // Iterate the event number, deactivate the event, attach the new specific data, save, and send the answer.
+                gameInfo.currentAnswersMap = [];
+                gameInfo.isActive = false;
                 gameInfo.eventNum = gameInfo.eventNum + 1;
                 gameInfo.currentEvent = object;
                 req.app.locals.scryActiveGameDB.put(gameInfo).then((result) => {
