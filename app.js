@@ -17,8 +17,8 @@ app.use("/scryGameControl/", scryGameControl); // Lets 'Game Controllers" edit a
 
 //Setup Databases
 const couchDBURL = "http://192.168.86.45:5984/";
-app.locals.scryKeyDB = new PouchDB(couchDBURL + "scryKeyDB");
-app.locals.scryActiveGameDB = new PouchDB(couchDBURL + "scryActiveGameDB");
+app.locals.scryKeyDB = new PouchDB(couchDBURL + "scrykeydb");
+app.locals.scryActiveGameDB = new PouchDB(couchDBURL + "scryactivegamedb");
 
 //Poke the DBs just to make sure we're up
 app.locals.scryKeyDB.info().then((info) => {
