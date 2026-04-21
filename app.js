@@ -16,7 +16,7 @@ app.use("/scryEvents/", scryEvents); //Handles all Events on the player end
 app.use("/scryGameControl/", scryGameControl); // Lets 'Game Controllers" edit a game.
 
 //Setup Databases
-const couchDBURL = "http://192.168.86.45:5984/";
+const couchDBURL = "http://localhost:5984/";
 app.locals.scryKeyDB = new PouchDB(couchDBURL + "scrykeydb");
 app.locals.scryActiveGameDB = new PouchDB(couchDBURL + "scryactivegamedb");
 
