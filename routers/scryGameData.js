@@ -1,6 +1,41 @@
 const express = require("express");
 const router = express.Router();
 
+const temporaryScoreVars = {
+    boatName: {
+        label: "Boat Name",
+        value: "The Hlungus",
+        row: 1,
+        column: 1,
+        width: 4,
+        height: 1,
+    },
+    averageStyle: {
+        label: "Average Style",
+        value: 4.12,
+        row: 2,
+        column: 1,
+        width: 1,
+        height: 2,
+    },
+    averageACAB: {
+        label: "Average ACAB",
+        value: 5.36,
+        row: 2,
+        column: 2,
+        width: 1,
+        height: 2,
+    },
+    averageRide: {
+        label: "Average Desire",
+        value: 3.82,
+        row: 2,
+        column: 3,
+        width: 1,
+        height: 2,
+    },
+};
+
 //This route is for supplying basic game data to players
 
 router.post("/", (req, res) => {
@@ -21,6 +56,7 @@ router.post("/", (req, res) => {
             gameInfo = result.docs[0];
             response.eventNum = gameInfo.eventNum;
             response.scoreVars = gameInfo.scoreVars;
+            //response.scoreVars = temporaryScoreVars; //fix me girlypop!
             response.isActive = gameInfo.isActive;
             response.gameOwnerName = gameInfo._id;
             if (req.body.fullUpdate == true) {

@@ -56,25 +56,28 @@ router.post("/gameControllerCommand", (req, res) => {
         if (command == "startGame") {
             startGame();
             //console.log("startgame!");
-        }
-        if (command == "stopGame") {
+        } else if (command == "stopGame") {
             stopGame();
             //console.log("stopgame!");
-        }
-        if (command == "newEvent") {
+        } else if (command == "newEvent") {
             newEvent(incomingObject);
-        }
-        if (command == "startEvent") {
+        } else if (command == "startEvent") {
             startStopEvent(true);
-        }
-        if (command == "stopEvent") {
+        } else if (command == "stopEvent") {
             startStopEvent(false);
-        }
-        if (command == "getAnswers") {
+        } else if (command == "getAnswers") {
             getAnswers();
-        }
-        if (command == "clearAnswers") {
+        } else if (command == "clearAnswers") {
             clearAnswers();
+        } else if (command == "setScores") {
+            setScores(incomingObject);
+        } else if (command == "clearScores") {
+            setScores({});
+        } else {
+            response.error = true;
+            response.msg =
+                "No valid command recieved or improper request format.";
+            sendResponse();
         }
     }
 
@@ -140,6 +143,20 @@ router.post("/gameControllerCommand", (req, res) => {
         }
     }
 
+    //set Scores
+    function setScores(object) {
+        req.app.locals.scryActiveGameDB
+            .get(req.body.creatorName)
+            .then((gameInfo) => {
+                gameInfo.scoreVars = object;
+                req.app.locals.scryActiveGameDB.put(gameInfo).then((result) => {
+                    response.scoreVars = gameInfo.scoreVars;
+                    sendResponse();
+                });
+            });
+    }
+
+    //Create a new event
     function newEvent(object) {
         req.app.locals.scryActiveGameDB
             .get(req.body.creatorName)
