@@ -1,86 +1,100 @@
 const express = require("express");
 const router = express.Router();
 
-const temporaryScoreVars = {
-    boatName: {
-        label: "Boat Name",
-        value: "The Hlungus",
-        row: 1,
-        column: 1,
-        width: 4,
-        height: 1,
-    },
-    averageStyle: {
-        label: "Average Style",
-        value: 4.12,
-        row: 2,
-        column: 1,
-        width: 1,
-        height: 2,
-    },
-    averageACAB: {
-        label: "Average ACAB",
-        value: 5.36,
-        row: 2,
-        column: 2,
-        width: 1,
-        height: 2,
-    },
-    averageRide: {
-        label: "Average Desire",
-        value: 3.82,
-        row: 2,
-        column: 3,
-        width: 1,
-        height: 2,
-    },
-};
-
-//This route is for supplying basic game data to players
-
+//This Post route is for supplying basic game data to players.
 router.post("/", (req, res) => {
     //TODO: Make this only hit the database For Real if some time has passed, so we don't spam it.
-    gameInfo = {};
-    response = {
+
+    //Sets up some variables. gameInfo will be what it gets from server/cache about the requested game's state.
+    //Response is what's ultimately sent to the client.
+    let gameInfo = {};
+    let response = {
         error: false,
         msg: "",
     };
 
-    req.app.locals.scryActiveGameDB
-        .find({
-            selector: {
-                joinCode: req.body.joinCode,
-            },
-        })
-        .then((result) => {
-            gameInfo = result.docs[0];
-            response.eventNum = gameInfo.eventNum;
-            response.scoreVars = gameInfo.scoreVars;
-            //response.scoreVars = temporaryScoreVars; //fix me girlypop!
-            response.isActive = gameInfo.isActive;
-            response.gameOwnerName = gameInfo._id;
-            if (req.body.fullUpdate == true) {
-                response.currentEvent = gameInfo.currentEvent;
-            }
+    // Check that there even is a join code
+    if (!Object.hasOwn(req.body, "joinCode")) {
+        response.error = true;
+        response.msg = "I didn't see a Join Code in that submission.";
+        sendResponse();
+        return;
+    }
 
-            sendResponse();
-        })
-        .catch((err) => {
-            console.log(err);
-            response.error = true;
-            response.msg =
-                "There was an error retrieving info for that join code.";
-            sendResponse();
-        });
+    // Yank any whoopsie spaces
+    // TODO: Sure could use some more filtering here girlypop
+    let joinCode = req.body.joinCode.replace(" ", "");
 
+    //Check if we already have this game's state cached, and if so, return it
+    if (Object.hasOwn(req.app.locals.scryActiveGameCache, joinCode)) {
+        //console.log("Replying from cache.");
+        gameInfo = req.app.locals.scryActiveGameCache[joinCode];
+        response.eventNum = gameInfo.eventNum;
+        response.scoreVars = gameInfo.scoreVars;
+        response.isActive = gameInfo.isActive;
+        response.gameOwnerName = gameInfo._id;
+        if (req.body.fullUpdate == true) {
+            response.currentEvent = gameInfo.currentEvent;
+        }
+        sendResponse();
+
+        //If it's not in cache, check database.
+    } else {
+        process.stdout.write(
+            "Recieved req for a game that isn't cached, checking...",
+        );
+        req.app.locals.scryActiveGameDB
+            .find({
+                selector: {
+                    joinCode: joinCode,
+                },
+            })
+            .then((result) => {
+                //If game exists, respond with that and update cache
+                if (result.docs.length == 1) {
+                    console.log("Found!");
+                    gameInfo = result.docs[0];
+                    req.app.locals.scryActiveGameCache[joinCode] =
+                        result.docs[0];
+                    response.eventNum = gameInfo.eventNum;
+                    response.scoreVars = gameInfo.scoreVars;
+                    response.isActive = gameInfo.isActive;
+                    response.gameOwnerName = gameInfo._id;
+                    if (req.body.fullUpdate == true) {
+                        response.currentEvent = gameInfo.currentEvent;
+                    }
+                    sendResponse();
+                    //If game does not exist, warn.
+                } else {
+                    console.log("Not Found.");
+                    response.error = true;
+                    response.msg =
+                        "Couldn't find a matching Join Code. Check the letters and try again?";
+                    sendResponse();
+                }
+            })
+            .catch((err) => {
+                console.log(err);
+                response.error = true;
+                response.msg =
+                    "There was an error retrieving info for that Join Code.";
+                sendResponse();
+            });
+    }
+
+    //TURN THIS DATABASE HIT INTO A SIDE ADVENTURE IF THE MAIN CHECK FAILS
+    // also todo: make sure it's checking the right joincode
+
+    // Okay cool function Past Me.
     function sendResponse() {
         res.send(response);
     }
 });
 
+//The PUT route is for players to supply an Answer to an Event.
 router.put("/", (req, res) => {
-    gameInfo = {};
-    response = {
+    let gameInfo = {};
+    let response = {
         error: false,
         msg: "",
     };
@@ -98,21 +112,33 @@ router.put("/", (req, res) => {
             if (Object.hasOwn(newAnswer, "sentStatus")) {
                 delete newAnswer.sentStatus;
             }
+
             gameInfo.currentAnswersMap.push(newAnswer);
 
             //TODO: hey this might throw an error!
-            req.app.locals.scryActiveGameDB.put(gameInfo).then((result) => {
-                console.log(
-                    `New Answer on ${gameInfo._id}'s Game, Event #${gameInfo.eventNum}. ${gameInfo.currentAnswersMap.length} Answers total.`,
-                );
-                sendResponse(); //answer finally
-            });
+            dbCatch = {}; //in case the database throws something weird.
+            req.app.locals.scryActiveGameDB
+                .put(gameInfo)
+                .then((result) => {
+                    dbCatch = result;
+                    console.log(
+                        `New Answer on ${gameInfo._id}'s Game, Event #${gameInfo.eventNum}. ${gameInfo.currentAnswersMap.length} Answers total.`,
+                    );
+                    sendResponse(); //answer finally
+                })
+                .catch((err) => {
+                    console.log("Error on adding answer:");
+                    console.log(err);
+                    console.log(dbCatch);
+                    response.error = true;
+                    response.msg = `There was an error adding that answer. Error Was:${err} Database said:${dbCatch}`;
+                    sendResponse();
+                });
         })
         .catch((err) => {
             console.log(err);
             response.error = true;
-            response.msg =
-                "There was an error retrieving info for that join code.";
+            response.msg = `There was an error retrieving info for that join code. Error Was:${err}`;
             sendResponse();
         });
 
@@ -122,31 +148,3 @@ router.put("/", (req, res) => {
 });
 
 module.exports = router;
-
-//GRAVEYARD
-/*
-gameID = req.body.gameID;
-
-if (!Object.hasOwn(req.app.locals.gamesDB, gameID)) {
-    response.error = true;
-    response.msg = "that game ID doesn't exist.";
-}
-
-//check that the gameID actually exists
-//check that the eventNum > 0.
-
-if (response.error == false) {
-    response.eventNum =
-        req.app.locals.gamesDB[gameID].scryCurrentEvent.eventNum;
-    if (response.eventNum > 0) {
-        response = {
-            ...response,
-            eventNum:
-                req.app.locals.gamesDB[gameID].scryCurrentEvent.eventNum,
-            isActive: req.app.locals.debug.scryCurrentEvent.isActive,
-            gameVars: req.app.locals.debug.scryGameVars,
-        };
-    }
-}
-
-*/

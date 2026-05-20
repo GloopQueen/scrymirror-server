@@ -12,7 +12,7 @@ router.post("/gameControllerCommand", (req, res) => {
     //user data we pull from the database will be stored here and used across a few functions
     userDeets = {};
 
-    // NEW KEYDB CHECK Code
+    //KEYDB CHECK Code
     //Search the keyDB for the name
     req.app.locals.scryKeyDB
         .find({
@@ -86,6 +86,13 @@ router.post("/gameControllerCommand", (req, res) => {
         res.send(response);
     }
 
+    //Clears the RAM cache. Called when the Game Runner updates something
+    //Intended to prevent desync issues: Next player to check in MUST hit the database
+    //And if the Gamne Runner update is still happening, they'll just "wait in line" instead.
+    function clearCache(joinCode) {
+        delete req.app.locals.scryActiveGameCache[joinCode];
+    }
+
     //Functions to start and stop a Game
     //TODO: Start and stop currently play dangerous with assuming ActiveGamesDB matches isRunning on the KeyDB.
     function startGame() {
@@ -110,10 +117,34 @@ router.post("/gameControllerCommand", (req, res) => {
             };
             response.joinCode = newCode;
             //TODO: hey this might throw an error!
-            req.app.locals.scryActiveGameDB.put(newGameInfo).then((result) => {
-                console.log(`Game Created:${result}`);
-                sendResponse(); //answer finally
-            });
+            //TODO: have it query the database first for a join code of that name.
+            //Verify code doesn't already exist.
+            //It's a one in six thousand chance which is actually higher than I thought??? wow
+            req.app.locals.scryActiveGameDB
+                .find({
+                    selector: {
+                        joinCode: response.joinCode,
+                    },
+                })
+                .then((result) => {
+                    //If game exists, respond with that and bail
+                    if (result.docs.length > 0) {
+                        console.log(
+                            "Error creating game: Join Code already exists",
+                        );
+                        response.error = true;
+                        response.msg =
+                            "Duplicate Join Code! Please retry. Also buy a lottery ticket.";
+                        //Setup Game.
+                    } else {
+                        req.app.locals.scryActiveGameDB
+                            .put(newGameInfo)
+                            .then((result) => {
+                                console.log(`Game Created:${result}`);
+                                sendResponse(); //answer finally
+                            });
+                    }
+                });
         } else {
             response.error = true;
             response.msg = "A game is already running for this name.";
@@ -132,6 +163,7 @@ router.post("/gameControllerCommand", (req, res) => {
             req.app.locals.scryActiveGameDB
                 .get(req.body.creatorName)
                 .then((result) => {
+                    clearCache(result.joinCode);
                     req.app.locals.scryActiveGameDB.remove(result);
                     console.log(`Game To Remove:${result._id}`);
                     sendResponse(); //answer finally
@@ -150,6 +182,7 @@ router.post("/gameControllerCommand", (req, res) => {
             .then((gameInfo) => {
                 gameInfo.scoreVars = object;
                 req.app.locals.scryActiveGameDB.put(gameInfo).then((result) => {
+                    clearCache(result.joinCode);
                     response.scoreVars = gameInfo.scoreVars;
                     sendResponse();
                 });
@@ -175,6 +208,7 @@ router.post("/gameControllerCommand", (req, res) => {
                 gameInfo.eventNum = gameInfo.eventNum + 1;
                 gameInfo.currentEvent = object;
                 req.app.locals.scryActiveGameDB.put(gameInfo).then((result) => {
+                    clearCache(gameInfo.joinCode);
                     console.log(
                         `Event Update: ${gameInfo._id}'s game setting up Event ${gameInfo.eventNum}.`,
                     );
@@ -211,6 +245,7 @@ router.post("/gameControllerCommand", (req, res) => {
             .then((gameInfo) => {
                 gameInfo.currentAnswersMap = [];
                 req.app.locals.scryActiveGameDB.put(gameInfo).then((result) => {
+                    clearCache(gameInfo.joinCode);
                     console.log(`Cleared Answers in ${gameInfo._id}'s Game.`);
                     response.isActive = gameInfo.isActive;
                     sendResponse(); //answer finally
@@ -237,6 +272,7 @@ router.post("/gameControllerCommand", (req, res) => {
                     req.app.locals.scryActiveGameDB
                         .put(gameInfo)
                         .then((result) => {
+                            clearCache(gameInfo.joinCode);
                             console.log(
                                 `Event ${gameInfo.eventNum} is ${isRunningChange ? "Starting" : "Stopping"} in ${gameInfo._id}'s game.`,
                             );
@@ -280,82 +316,3 @@ function generateCode(length) {
     }
     return codeResponse;
 }
-
-// ==== GRAVE YARD ===
-//OLD REMOVE ME IT'S IN THE CONTROL ROUTER. -- Start a new Event based on the Game Controller's data
-/* router.post("/newEvent", (req, res) => {
-    //TODO: this absolutely needs some data validation
-    const response = {
-        msg: "",
-        error: false,
-    };
-
-    //Check for the admin key.
-    if (
-        req.body.gameControllerKey !=
-        req.app.locals.debug.debug.gameControllerKey
-    ) {
-        response.error = true;
-        response.msg = "Incorrect Game Controller key.";
-        res.status(400);
-        // If all checks have cleared, Set their data as the event data and advance the event ID.
-    } else {
-        //Archive current event's data and player responses, then clear player responses.
-        //Skip if old event was 0 (Assuming that's the "boot" number.
-        let oldEventNum = req.app.locals.debug.debug.scryCurrentEvent.eventNum;
-        if (oldEventNum != 0) {
-            req.app.locals.debug.scryEventArchive[oldEventNum] = {};
-            req.app.locals.debug.scryEventArchive[oldEventNum].eventData =
-                req.app.locals.debug.scryCurrentEvent;
-            req.app.locals.debug.scryEventArchive[oldEventNum].answersMap =
-                req.app.locals.debug.scryCurrentAnswersMap;
-            req.app.locals.debug.scryCurrentAnswersMap = {};
-        }
-
-        //set current Event data to be incoming Event
-        req.app.locals.debug.scryCurrentEvent.type = req.body.scryNewEvent.type;
-        req.app.locals.debug.scryCurrentEvent.verb = req.body.scryNewEvent.verb;
-        req.app.locals.debug.scryCurrentEvent.questionText =
-            req.body.scryNewEvent.questionText;
-        req.app.locals.debug.scryCurrentEvent.options =
-            req.body.scryNewEvent.options;
-        req.app.locals.debug.scryCurrentEvent.eventNum =
-            req.app.locals.debug.scryCurrentEvent.eventNum + 1;
-        req.app.locals.debug.scryCurrentEvent.isActive = true;
-        res.msg = req.app.locals.debug.scryCurrentEvent;
-        console.log(
-            `Starting Event number ${req.app.locals.debug.scryCurrentEvent.eventNum}.`,
-        );
-        res.status(200);
-    }
-
-    res.send(response);
-    if (response.error == true) {
-        console.log(
-            `Err on Game Controller creating new Event: ${response.msg}.`,
-        );
-    }
-    }); */
-
-//Supply the current Answers Map
-//TODO: this whole damn thing needs data validatino everywhere or it's gonna keep exploding
-/* router.get("/currentAnswersMap", (req, res) => {
-        if (req.body.gameControllerKey != req.app.locals.debug.gameControllerKey) {
-            res.status(400);
-            res.send("Invalid Game Controller Key.");
-        } else {
-            res.status(200);
-            res.send(req.app.locals.debug.scryCurrentAnswersMap);
-        }
-    }); */
-
-/*
-    function generateHex(length) {
-        let letters = "0123456789ABCDEF";
-        let hexResponse = "";
-
-        for (let i = 0; i < length; i++) {
-            hexResponse += letters[Math.floor(Math.random() * 16)];
-        }
-        return hexResponse;
-        }*/

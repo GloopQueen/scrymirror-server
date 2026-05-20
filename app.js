@@ -20,6 +20,9 @@ const couchDBURL = "http://localhost:5984/";
 app.locals.scryKeyDB = new PouchDB(couchDBURL + "scrykeydb");
 app.locals.scryActiveGameDB = new PouchDB(couchDBURL + "scryactivegamedb");
 
+//Game data is cached in here by join code, to prevent unnecessary database slamming.
+app.locals.scryActiveGameCache = {};
+
 //Poke the DBs just to make sure we're up
 app.locals.scryKeyDB.info().then((info) => {
     console.log(`Connected to Key DB, which has ${info.doc_count} entries.`);
@@ -29,8 +32,6 @@ app.locals.scryActiveGameDB.info().then((info) => {
         `Connected to Active Games DB, which has ${info.doc_count} entries.`,
     );
 });
-
-app.locals.gamesDB = {};
 
 //temporary while I move everything over
 app.locals.debug = {};

@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 
+//DEPRECATED I THINK YOU CAN IGNORE THIS WHOLE DOCUMENT
+
 //Handles all Events on the player end, including sending them the Event data and collecting their responses.
 router.get("/currentEvent/", (req, res) => {
     res.send(req.app.locals.debug.scryCurrentEvent);
