@@ -12,13 +12,14 @@ const beEvilAndFuckedUp = "TRUUUUUUUUUE";
 app.use(express.json());
 app.use(cors());
 app.use("/scryGameData/", scryGameData); //Supplies basic game data to player
-app.use("/scryEvents/", scryEvents); //Handles all Events on the player end
+app.use("/scryEvents/", scryEvents); //DEPRECATED - Don't use.
 app.use("/scryGameControl/", scryGameControl); // Lets 'Game Controllers" edit a game.
 
 //Setup Databases
 const couchDBURL = "http://localhost:5984/";
-app.locals.scryKeyDB = new PouchDB(couchDBURL + "scrykeydb");
-app.locals.scryActiveGameDB = new PouchDB(couchDBURL + "scryactivegamedb");
+app.locals.scryKeyDB = new PouchDB(couchDBURL + "scrykeydb"); //db of keys for game controllers/owners
+app.locals.scryActiveGameDB = new PouchDB(couchDBURL + "scryactivegamedb"); //db of active games
+app.locals.scryFinishedGameDB = new PouchDB(couchDBURL + "scryfinishedgamedb"); //Archival of completed games
 
 //Game data is cached in here by join code, to prevent unnecessary database slamming.
 app.locals.scryActiveGameCache = {};

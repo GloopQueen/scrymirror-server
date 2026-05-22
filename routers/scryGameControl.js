@@ -156,17 +156,64 @@ router.post("/gameControllerCommand", (req, res) => {
         if (userDeets.isRunning == true) {
             // set isRunning to false and put it on the server
             userDeets.isRunning = false;
-            console.log("this ran!");
+            //console.log("this ran!");
             req.app.locals.scryKeyDB.put(userDeets);
             //Delete the game.
             // TODO: hey this doesn't handle errors girlypop
+            let gameToDelete = {};
             req.app.locals.scryActiveGameDB
                 .get(req.body.creatorName)
                 .then((result) => {
-                    clearCache(result.joinCode);
-                    req.app.locals.scryActiveGameDB.remove(result);
-                    console.log(`Game To Remove:${result._id}`);
-                    sendResponse(); //answer finally
+                    //check we pulled the right person
+                    if (result._id == req.body.creatorName) {
+                        gameToDelete = result;
+                        //Adjust the name to include deletion date, remove revision tracking (db doesn't want revs on new files)
+                        const d = Date.now();
+                        gameToDelete._id = gameToDelete._id + "|" + d;
+                        delete gameToDelete._rev;
+                        //Copy over to the old game db and verify it worked
+                        req.app.locals.scryFinishedGameDB
+                            .put(gameToDelete)
+                            .then((result) => {
+                                if (Object.hasOwn(result, "ok")) {
+                                    //do the delete
+                                    req.app.locals.scryActiveGameDB
+                                        .get(req.body.creatorName)
+                                        .then((result) => {
+                                            clearCache(result.joinCode);
+                                            req.app.locals.scryActiveGameDB.remove(
+                                                result,
+                                            );
+                                            console.log(
+                                                `Game To Remove:${result._id}`,
+                                            );
+                                            sendResponse(); //answer finally
+                                        })
+                                        .catch((err) => {
+                                            cosole.log(err);
+                                        });
+                                } else {
+                                    console.log(result);
+                                    response.msg =
+                                        "There was an error archiving the game.";
+                                    response.error = true;
+                                    sendResponse();
+                                }
+                            })
+                            .catch((err) => {
+                                console.log(err);
+                            });
+                    } else {
+                        console.log(result);
+                        response.msg =
+                            "There was an error finding the game to archive.";
+                        response.error = true;
+                        sendResponse();
+                        // TODO: retrying would be better but for now ending games is not a common event
+                    }
+                })
+                .catch((err) => {
+                    console.log(err);
                 });
         } else {
             response.error = true;
