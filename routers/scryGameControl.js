@@ -90,7 +90,9 @@ router.post("/gameControllerCommand", (req, res) => {
     //Intended to prevent desync issues: Next player to check in MUST hit the database
     //And if the Gamne Runner update is still happening, they'll just "wait in line" instead.
     function clearCache(joinCode) {
-        delete req.app.locals.scryActiveGameCache[joinCode];
+        if (Object.hasOwn(req.app.locals.scryActiveGameCache, joinCode)) {
+            delete req.app.locals.scryActiveGameCache[joinCode];
+        }
     }
 
     //Functions to start and stop a Game
@@ -114,6 +116,7 @@ router.post("/gameControllerCommand", (req, res) => {
                 currentAnswersMap: [],
                 scoreVars: {},
                 eventArchive: {},
+                players: {},
             };
             response.joinCode = newCode;
             //TODO: hey this might throw an error!
@@ -247,10 +250,16 @@ router.post("/gameControllerCommand", (req, res) => {
                     gameInfo.eventArchive[gameInfo.eventNum].event =
                         gameInfo.currentEvent;
                     gameInfo.eventArchive[gameInfo.eventNum].currentAnswersMap =
-                        gameInfo.currentAnswersMap;
+                        gameInfo.currentAnswersMap; //can probably be removed
+                    gameInfo.eventArchive[gameInfo.eventNum].players =
+                        gameInfo.players;
                 }
                 // Iterate the event number, deactivate the event, attach the new specific data, save, and send the answer.
-                gameInfo.currentAnswersMap = [];
+                gameInfo.currentAnswersMap = []; //can probably be deleted.
+                //Remove answer data from each player entry.
+                for (key of Object.keys(gameInfo.players)) {
+                    key.answer = {};
+                }
                 gameInfo.isActive = false;
                 gameInfo.eventNum = gameInfo.eventNum + 1;
                 gameInfo.currentEvent = object;
@@ -275,7 +284,8 @@ router.post("/gameControllerCommand", (req, res) => {
         req.app.locals.scryActiveGameDB
             .get(req.body.creatorName)
             .then((gameInfo) => {
-                response.currentAnswersMap = gameInfo.currentAnswersMap;
+                response.currentAnswersMap = gameInfo.currentAnswersMap; //This should probably get removed.
+                response.players = gameInfo.players; //The players object should contain every answer so far.
                 sendResponse();
             })
             .catch((err) => {
@@ -290,7 +300,11 @@ router.post("/gameControllerCommand", (req, res) => {
         req.app.locals.scryActiveGameDB
             .get(req.body.creatorName)
             .then((gameInfo) => {
-                gameInfo.currentAnswersMap = [];
+                gameInfo.currentAnswersMap = []; //This can probably be removed.
+                //Remove answer data from each player entry.
+                for (key of Object.keys(gameInfo.players)) {
+                    key.answer = {};
+                }
                 req.app.locals.scryActiveGameDB.put(gameInfo).then((result) => {
                     clearCache(gameInfo.joinCode);
                     console.log(`Cleared Answers in ${gameInfo._id}'s Game.`);
