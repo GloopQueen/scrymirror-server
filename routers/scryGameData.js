@@ -4,6 +4,7 @@ const router = express.Router();
 //This Post route is for supplying basic game data to players.
 //@TODO: Make this reject if they lack a PlayerID. But only after we establish the newplayer route.
 router.post("/", (req, res) => {
+    console.log("beep.");
     //Sets up some variables. gameInfo will be what it gets from server/cache about the requested game's state.
     //Response is what's ultimately sent to the client.
     let gameInfo = {};
@@ -256,6 +257,7 @@ router.put("/new", (req, res) => {
             if (result.docs.length == 1) {
                 console.log("Found!");
                 gameInfo = result.docs[0];
+                response.gameOwnerName = gameInfo._id;
                 //Create a new playerID
                 newPlayerID = Math.floor(Math.random() * 10000);
                 //check if that newPlayerID exists, and if so, try again.
@@ -275,7 +277,7 @@ router.put("/new", (req, res) => {
                         );
                         //Finally actually tell the player their ID.
                         response.playerID = newPlayerID;
-                        console.log("marco!");
+                        //console.log("marco!");
                         sendResponse();
                         //Clear the cache so the next check-in is forced to notice the update.
                         if (
@@ -295,7 +297,7 @@ router.put("/new", (req, res) => {
                         response.msg = `There was an error adding you. Error Was:${err} Database said:${dbCatch}`;
                         sendResponse();
                     });
-                console.log("polo!");
+                //console.log("polo!");
                 //sendResponse(); //Send what happened to the client.
             } else {
                 console.log("Not Found.");
