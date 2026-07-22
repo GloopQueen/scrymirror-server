@@ -212,7 +212,9 @@ router.put("/new", (req, res) => {
     //gameInfo will be what it gets from server about the requested game's state.
     //Response is what's ultimately sent to the client.
     //newPlayerID is the player ID we'll be assigning to this player, assuming everything's hunky dory.
+    //teamJoinCode is the digits after the -, if present. This existing means
     let newPlayerID = 0;
+    let teamJoinCode = "";
     let gameInfo = {};
     let response = {
         error: false,
@@ -227,6 +229,52 @@ router.put("/new", (req, res) => {
         sendResponse();
         return;
     }
+
+    //check for only - and alphanumeric on the joincode
+    if (!/^[a-z0-9-]+$/i.test(req.body.joinCode)) {
+        response.error = true;
+        response.msg = "Join code format looks weird: I only take numbers, letters, and the dash (-).";
+    }
+
+
+    function removeMeImAnExample() {
+        //Example regex code that will only allow alphanumeric and a dash.
+        //Put this on the joincode, and the name. do the same on the client side (do it sloppy and just alert())
+        let value = "BQK6R4-YQ8";
+
+        if (/^[a-z0-9-]+$/i.test(value)) {
+            //-------------------------^^^^^^^^^^
+            console.log("Passed check.");
+            return;
+        }
+    }
+
+    //Wrapping this in a try/catch in lieu of proper validation lol this is naughty
+    try {
+        //Check if it's six characters.
+        if (!joinFullString.length == 6) {
+            //Check if it's ten characters with a dash in it.
+            if (joinFullString.length == 10 && joinFullString[6] == "-") {
+                //if so, grab the code.
+                const lilSplice = joinFullString.split("-");
+                teamJoinCode = lilSplice[1];
+                console.log()
+            } else {
+                //if it's something else, get mad.
+                response.error = true;
+                response.msg = "Your joinCode format looks weird. Make sure it's ABCDEF, or ABCDEF-GHI."
+            }
+        }
+    } catch (error) {
+        console.log("Possible Join Code Issue. Error:");
+        console.log(error);
+        response.error = true;
+        response.msg = "Your joinCode made the server mad. Make sure theformat is ABCDEF, or ABCDEF-GHI."
+    }
+
+
+
+
 
     // Check that there is a name
     // @todo data validation

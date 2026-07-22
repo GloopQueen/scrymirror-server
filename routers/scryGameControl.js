@@ -95,9 +95,33 @@ router.post("/gameControllerCommand", (req, res) => {
         }
     }
 
+    //I stole this from google lol
+    // no not the AI
+    function checkForDuplicates(array) {
+        let valuesAlreadySeen = [];
+
+        for (let i = 0; i < array.length; i++) {
+            let value = array[i];
+            if (valuesAlreadySeen.indexOf(value) !== -1) {
+                return true;
+            }
+            valuesAlreadySeen.push(value);
+        }
+        return false;
+    }
+
     //Functions to start and stop a Game
     //TODO: Start and stop currently play dangerous with assuming ActiveGamesDB matches isRunning on the KeyDB.
     function startGame() {
+        //Get mad if there's no team setup info.
+        if (req.body.teamCount > 0 && !Object.hasOwn(req.body, "joinMode")) {
+            response.error = true;
+            response.msg =
+                "teamCount is greater than zero, so I need a 'joinMode' of 'uniqueCodes' or 'oneByOne'";
+            sendResponse();
+            return;
+        }
+
         if (userDeets.isRunning == false) {
             //SET ISRUNNING TO TRUE and put it on the server
             userDeets.isRunning = true;
@@ -118,7 +142,38 @@ router.post("/gameControllerCommand", (req, res) => {
                 eventArchive: {},
                 players: {},
             };
+
+            //Optional Teams Setup Stuff
+            if (req.body.teamCount > 0) {
+                let newTeams = {};
+                newTeams.joinMode = req.body.joinMode;
+
+                //Generate suffix teamcodes
+                let newJoinCodes = [];
+                for (let i = 1; i <= req.body.teamCount; i++) {
+                    newJoinCodes.push(generateCode(3));
+                    //Bail and start over if we get bad luck and any match
+                    if (checkForDuplicates(newJoinCodes)) {
+                        newJoinCodes = [];
+                        i = 0;
+                    }
+                }
+                //Apply 'em
+                let tempPos = 1;
+                newJoinCodes.forEach((i) => {
+                    newTeams[tempPos] = {};
+                    newTeams[tempPos].joinCode = i;
+                    tempPos++;
+                });
+                newGameInfo.teams = newTeams;
+                console.log(newTeams);
+            }
+
+            //Add join code, and possibly team info, to response.
             response.joinCode = newCode;
+            if (Object.hasOwn(newGameInfo, "teams")) {
+                response.teams = newGameInfo.teams;
+            }
             //TODO: hey this might throw an error!
             //TODO: have it query the database first for a join code of that name.
             //Verify code doesn't already exist.
@@ -369,11 +424,11 @@ router.post("/badActiveGame", (req, res) => {
 module.exports = router;
 
 function generateCode(length) {
-    let letters = "FHLQRSWXY2456789"; //Dude I am trying so hard to make it never spell a potty word
+    let letters = "BCDFGHJKLMNPQRSWXY24567890"; //Dude I am trying so hard to make it never spell a potty word
     let codeResponse = "";
 
     for (let i = 0; i < length; i++) {
-        codeResponse += letters[Math.floor(Math.random() * 16)];
+        codeResponse += letters[Math.floor(Math.random() * 25)];
     }
     return codeResponse;
 }
