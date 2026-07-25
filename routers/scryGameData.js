@@ -115,10 +115,13 @@ router.post("/", (req, res) => {
     }
 });
 
+
+
 //The PUT route is for players to supply an Answer to an Event.
 // @TODO: update to attach to the playerID. Also reject if there's no playerID.
 router.put("/", (req, res) => {
     let gameInfo = {};
+    let newAnswer = {};
     let response = {
         error: false,
         msg: "",
@@ -142,10 +145,11 @@ router.put("/", (req, res) => {
         .then((result) => {
             gameInfo = result.docs[0];
             newAnswer = req.body;
-            //this should probably get culled on the client instead but ehhhhhh. eh
+            //Remove some stuff that doesn't need to be there
             if (Object.hasOwn(newAnswer, "sentStatus")) {
                 delete newAnswer.sentStatus;
             }
+
 
             //Check if that player ID exists.
             if (!Object.hasOwn(gameInfo.players, req.body.playerID)) {
@@ -155,10 +159,15 @@ router.put("/", (req, res) => {
                 return;
             }
 
+
+
             //Add answer to player's ID.
-            gameInfo.players[req.body.playerID] = {
-                answer: newAnswer,
-            };
+            let newPlayerDeets = { ...gameInfo.players[req.body.playerID], answer: newAnswer };
+            gameInfo.players[req.body.playerID] = newPlayerDeets;
+
+            //Delete the extra trailing playerID since it's just clutter.
+            const submitterIDForTheLog = gameInfo.players[req.body.playerID].answer.playerID;
+            delete gameInfo.players[req.body.playerID].answer.playerID;
 
             //@TODO: hey this might throw an error!
             // Update the database with the new answer.
@@ -168,7 +177,7 @@ router.put("/", (req, res) => {
                 .then((result) => {
                     dbCatch = result;
                     console.log(
-                        `New Answer on ${gameInfo._id}'s Game, Event #${gameInfo.eventNum}, from ${req.body.playerID}.`,
+                        `New Answer on ${gameInfo._id}'s Game, Event #${gameInfo.eventNum}, from ${submitterIDForTheLog}.`,
                     );
 
                     //Delete cache, if it exists.
@@ -214,6 +223,7 @@ router.put("/new", (req, res) => {
     //newPlayerID is the player ID we'll be assigning to this player, assuming everything's hunky dory.
     //teamJoinCode is the digits after the -, if present. This existing means
     let newPlayerID = 0;
+    let generalJoinCode = "";
     let teamJoinCode = "";
     let gameInfo = {};
     let response = {
@@ -237,43 +247,45 @@ router.put("/new", (req, res) => {
     }
 
 
-    function removeMeImAnExample() {
-        //Example regex code that will only allow alphanumeric and a dash.
-        //Put this on the joincode, and the name. do the same on the client side (do it sloppy and just alert())
-        let value = "BQK6R4-YQ8";
 
-        if (/^[a-z0-9-]+$/i.test(value)) {
-            //-------------------------^^^^^^^^^^
-            console.log("Passed check.");
-            return;
-        }
-    }
+    let joinFullString = req.body.joinCode;
 
+    //Filter if it's a six-digit standard code, or a ten digit with a team code.
     //Wrapping this in a try/catch in lieu of proper validation lol this is naughty
     try {
+        //console.log("marco");
+        //console.log(joinFullString.length);
         //Check if it's six characters.
-        if (!joinFullString.length == 6) {
-            //Check if it's ten characters with a dash in it.
+        if (joinFullString.length == 6) {
+            generalJoinCode = joinFullString;
+        }
+        //Check if it's not six characters.
+        if (joinFullString.length !== 6) {
+            //console.log("polo");
+            //Make sure it's ten characters with a dash in it.
             if (joinFullString.length == 10 && joinFullString[6] == "-") {
                 //if so, grab the code.
+                //console.log("pleebo");
                 const lilSplice = joinFullString.split("-");
                 teamJoinCode = lilSplice[1];
-                console.log()
+                generalJoinCode = lilSplice[0];
+                console.log(teamJoinCode)
             } else {
                 //if it's something else, get mad.
                 response.error = true;
                 response.msg = "Your joinCode format looks weird. Make sure it's ABCDEF, or ABCDEF-GHI."
+                sendResponse();
+                return;
             }
         }
     } catch (error) {
         console.log("Possible Join Code Issue. Error:");
         console.log(error);
         response.error = true;
-        response.msg = "Your joinCode made the server mad. Make sure theformat is ABCDEF, or ABCDEF-GHI."
+        response.msg = "Your joinCode made the server mad. Make sure theformat is ABCDEF, or ABCDEF-GHI.";
+        sendResponse();
+        return;
     }
-
-
-
 
 
     // Check that there is a name
@@ -287,17 +299,17 @@ router.put("/new", (req, res) => {
 
     // Yank any whoopsie spaces
     // @TODO: Sure could use some more filtering here girlypop
-    let joinCode = req.body.joinCode.replace(" ", "");
+    //let joinCode = req.body.joinCode.replace(" ", "");
 
     process.stdout.write(
-        `New player looking for a game with ${joinCode}, checking...`,
+        `New player looking for a game with ${generalJoinCode}, checking...`,
     );
 
     //hit up the server
     req.app.locals.scryActiveGameDB
         .find({
             selector: {
-                joinCode: joinCode,
+                joinCode: generalJoinCode,
             },
         })
         .then((result) => {
@@ -314,7 +326,43 @@ router.put("/new", (req, res) => {
                 }
                 //Add new player ID to listing
                 gameInfo.players[newPlayerID] = { name: req.body.name };
-                //Update on the database as well
+
+                //❤️~CODE HERE TO UPDATE TEAM ENTRY~❤️
+
+                // Verify that teamJoinCode is there, To initiate team assigments.
+                if (teamJoinCode.length > 1) {
+                    console.log("join code loop initiating.");
+                    if (Object.hasOwn(gameInfo.teams, "joinMode")) {
+                      // Check if mode is set to uniqueCodes
+                        if (gameInfo.teams.joinMode == "uniqueCodes") {
+                          // iterate over each possible team number
+                          //  if it exists, check if number.joincode matches teamJoinCode
+                          //      if so, add it then exit loop
+                          //      if not, keep going
+                          //  if it doesnt exist, bail completely and complain
+                          for (let i = 1; i < 50; i++) {
+                              if (Object.hasOwn(gameInfo.teams, i)) {
+                                  if (gameInfo.teams[i].joinCode == teamJoinCode) {
+                                      let newPlayerArray = [...gameInfo.teams[i].members, newPlayerID];
+                                      gameInfo.teams[i].members = newPlayerArray;
+                                      console.log(`Adding player ${newPlayerID} to team ${i}.`);
+                                      gameInfo.players[newPlayerID] = { name: req.body.name, teamNumber: i };
+                                      // @TODO This is saving to both the array and to the team member themselves. Probably asking for trouble. stick to team member.
+                                      break;
+                                  }
+                              } else {
+                                  response.error = true;
+                                  response.msg = "Found a game matching your code, but not a team. Check those last three after the dash?";
+                                  sendResponse();
+                                  return;
+                            }
+                          }
+                      }
+                      //@Todo onebyone code here
+                  }
+                }
+
+                //Update the new player ID (and possibly team number) on the database.
                 let dbCatch = {}; //in case the database throws something weird.
                 req.app.locals.scryActiveGameDB
                     .put(gameInfo)
@@ -331,10 +379,10 @@ router.put("/new", (req, res) => {
                         if (
                             Object.hasOwn(
                                 req.app.locals.scryActiveGameCache,
-                                joinCode,
+                                generalJoinCode,
                             )
                         ) {
-                            delete req.app.locals.scryActiveGameCache[joinCode];
+                            delete req.app.locals.scryActiveGameCache[generalJoinCode];
                         }
                     })
                     .catch((err) => {
@@ -367,5 +415,18 @@ router.put("/new", (req, res) => {
         res.send(response);
     }
 });
+
+//Gloop this can go. you can remove your Emotional Support Function That Don't Do Shit
+function removeMeImAnExample() {
+    //Example regex code that will only allow alphanumeric and a dash.
+    //Put this on the joincode, and the name. do the same on the client side (do it sloppy and just alert())
+    let value = "BQK6R4-YQ8";
+
+    if (/^[a-z0-9-]+$/i.test(value)) {
+        //-------------------------^^^^^^^^^^
+        console.log("Passed check.");
+        return;
+    }
+}
 
 module.exports = router;

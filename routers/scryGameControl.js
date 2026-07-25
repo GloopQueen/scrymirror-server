@@ -158,11 +158,16 @@ router.post("/gameControllerCommand", (req, res) => {
                         i = 0;
                     }
                 }
-                //Apply 'em
+                //Apply 'em and flesh out the team structure
                 let tempPos = 1;
                 newJoinCodes.forEach((i) => {
                     newTeams[tempPos] = {};
                     newTeams[tempPos].joinCode = i;
+                    newTeams[tempPos].members = [];
+                    newTeams[tempPos].scoreBoard = {};
+                    newTeams[tempPos].question = {};
+                    newTeams[tempPos].name = `${tempPos}`; //@Todo proper name code
+                    newTeams[tempPos].size = 0;  //@Todo Properly implement max team sizes
                     tempPos++;
                 });
                 newGameInfo.teams = newTeams;
@@ -358,7 +363,8 @@ router.post("/gameControllerCommand", (req, res) => {
                 gameInfo.currentAnswersMap = []; //This can probably be removed.
                 //Remove answer data from each player entry.
                 for (key of Object.keys(gameInfo.players)) {
-                    key.answer = {};
+                    console.log(key);
+                    delete gameInfo.players[key].answer;
                 }
                 req.app.locals.scryActiveGameDB.put(gameInfo).then((result) => {
                     clearCache(gameInfo.joinCode);
