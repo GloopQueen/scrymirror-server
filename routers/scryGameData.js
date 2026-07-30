@@ -51,9 +51,7 @@ router.post("/", (req, res) => {
         response.scoreVars = gameInfo.scoreVars;
         response.isActive = gameInfo.isActive;
         response.gameOwnerName = gameInfo._id;
-        if (req.body.fullUpdate == true) {
-            response.currentEvent = gameInfo.currentEvent;
-        }
+        prepareResponse();
         sendResponse();
 
         //If it's not in cache, check database.
@@ -83,12 +81,29 @@ router.post("/", (req, res) => {
                         return;
                     }
 
+
+
                     response.eventNum = gameInfo.eventNum;
                     response.scoreVars = gameInfo.scoreVars;
                     response.isActive = gameInfo.isActive;
                     response.gameOwnerName = gameInfo._id;
                     if (req.body.fullUpdate == true) {
-                        response.currentEvent = gameInfo.currentEvent;
+                        //check if team behavior is active
+                        // if so, get player info (find out exact location)
+                        // read player.teamNumber
+                        // check if no team
+                        //    if so, check if general exists
+                        //       if general exists, return it
+                        //       if not, return notYourTurn = true
+                        // else check if teams[thatnumber].currentEvent is populated
+                        //      if populated, return.
+                        //      if not, return notyourturn
+                        // if not, just send the line below
+
+                        //Check if its Teams Time™️
+                        prepareResponse();
+
+
                     }
                     sendResponse();
                     //If game does not exist, warn.
@@ -109,10 +124,51 @@ router.post("/", (req, res) => {
             });
     }
 
+    //prepares response, accounting for Team behavior.
+    function prepareResponse() {
+        const isEmpty = obj => Object.keys(obj).length === 0;
+
+      if (Object.hasOwn(gameInfo, "teams")) {
+          console.log("Running teams logic.");
+          const playerNum = req.body.playerID;
+          //Check if the player is on a team
+          if (Object.hasOwn(gameInfo.players[playerNum], "teamNumber")) {
+              const playerTeamNumber = gameInfo.players[playerNum].teamNumber;
+              console.log(`Looks like player is on ${playerTeamNumber}.`);
+              //if the player is on a team, check if there's a team-specific Event
+              if (isEmpty(gameInfo.teams[playerTeamNumber].currentEvent)) {
+                  //if not, tell them it's not their turn.
+                  response.notYourTurn = true;
+              } else {
+                  //if yes, return the team-specific Event.
+                  response.currentEvent = gameInfo.teams[playerTeamNumber].currentEvent;
+              }
+          } else {
+              //If the player isn't on a team, check if there's general event data.
+              console.log("looks like player is not on a team.");
+              if (isEmpty(gameInfo.currentEvent)) {
+                  response.notYourTurn = true;
+              } else {
+                  response.currentEvent = gameInfo.currentEvent;
+              }
+          }
+      } else {
+        //if we're not doing any team nonsense, just return as normal.
+          console.log("Not running teams logic.");
+          response.currentEvent = gameInfo.currentEvent;
+      }
+    }
+
+
     //Cool Function Past Me
     function sendResponse() {
         res.send(response);
     }
+
+    //function to check if I'm giving it an empty Object
+    // Or so google says
+    const isEmpty = obj => Object.keys(obj).length === 0;
+
 });
 
 
@@ -244,6 +300,8 @@ router.put("/new", (req, res) => {
     if (!/^[a-z0-9-]+$/i.test(req.body.joinCode)) {
         response.error = true;
         response.msg = "Join code format looks weird: I only take numbers, letters, and the dash (-).";
+        sendResponse();
+        return;
     }
 
 
@@ -333,8 +391,10 @@ router.put("/new", (req, res) => {
                 if (teamJoinCode.length > 1) {
                     console.log("join code loop initiating.");
                     if (Object.hasOwn(gameInfo.teams, "joinMode")) {
+                      console.log("passed flag one.");
                       // Check if mode is set to uniqueCodes
                         if (gameInfo.teams.joinMode == "uniqueCodes") {
+                            console.log("passed flag two.");
                           // iterate over each possible team number
                           //  if it exists, check if number.joincode matches teamJoinCode
                           //      if so, add it then exit loop

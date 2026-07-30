@@ -122,6 +122,19 @@ router.post("/gameControllerCommand", (req, res) => {
             return;
         }
 
+        //Check that join mode is a valid option. Guess who made it uniqueCode singular one time lol
+        if (Object.hasOwn(req.body, "joinMode")) {
+            if (req.body.joinMode == "uniqueCodes" || req.body.joinMode == "oneByOne") {
+                //can I just leave it blank right here? I'm gonna.
+            } else {
+              response.error = true;
+              response.msg =
+                  "'joinMode' should be 'uniqueCodes' or 'oneByOne'";
+              sendResponse();
+              return;
+            }
+        }
+
         if (userDeets.isRunning == false) {
             //SET ISRUNNING TO TRUE and put it on the server
             userDeets.isRunning = true;
@@ -165,7 +178,7 @@ router.post("/gameControllerCommand", (req, res) => {
                     newTeams[tempPos].joinCode = i;
                     newTeams[tempPos].members = [];
                     newTeams[tempPos].scoreBoard = {};
-                    newTeams[tempPos].question = {};
+                    newTeams[tempPos].currentEvent = {};
                     newTeams[tempPos].name = `${tempPos}`; //@Todo proper name code
                     newTeams[tempPos].size = 0;  //@Todo Properly implement max team sizes
                     tempPos++;
@@ -320,9 +333,41 @@ router.post("/gameControllerCommand", (req, res) => {
                 for (key of Object.keys(gameInfo.players)) {
                     key.answer = {};
                 }
+
+                //Remove currentEvent data for each team, if any.
+                if (Object.hasOwn(gameInfo, "teams")) {
+                  for (key of Object.keys(gameInfo.teams)) {
+                      //check if there's a currentEvent object on each entry under teams, and remove it if so
+                      if (Object.hasOwn(key, "currentEvent")) {
+                          key.currentEvent = {};
+                      }
+                  }
+                }
+
+
                 gameInfo.isActive = false;
                 gameInfo.eventNum = gameInfo.eventNum + 1;
-                gameInfo.currentEvent = object;
+
+
+                //Attach data based on team info, or lack thereof.
+                if (Object.hasOwn(object, "isForTeams")) {
+                    const isForArray = object.isForTeams.split('');
+                    //stick object data in respective team info, treating G as general.
+                    isForArray.map((l) => {
+                        if (l == "G") {
+                            gameInfo.currentEvent = object;
+                            console.log("Sticking question data in general spot.");
+                        } else {
+                            gameInfo.teams[l].currentEvent = object;
+                            console.log(`Sticking question data on Team ${l}.`);
+                        }
+                    });
+                } else {
+                    gameInfo.currentEvent = object;
+                }
+
+
+                //Finally upload
                 req.app.locals.scryActiveGameDB.put(gameInfo).then((result) => {
                     clearCache(gameInfo.joinCode);
                     console.log(
