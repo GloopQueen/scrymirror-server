@@ -303,10 +303,33 @@ router.post("/gameControllerCommand", (req, res) => {
         req.app.locals.scryActiveGameDB
             .get(req.body.creatorName)
             .then((gameInfo) => {
-                gameInfo.scoreVars = object;
+                const newScoreBoards = object;
+                //Iterate over existing scoreboards
+                //If existing data, make it an empty object
+                for (key of Object.keys(gameInfo.teams)) {
+                    //console.log(key);
+                    //check if there's a currentEvent object on each entry under teams, and remove it if so
+                    if (Object.hasOwn(gameInfo.teams[key], "scoreBoard")) {
+                        //console.log("beep");
+                        key.scoreBoard = {}; //Might not actually do anything
+                        gameInfo.teams[key].scoreBoard = {};
+                    }
+                }
+                //Iterate over newScoreBoards. For each entry that exists, put that data in the matching gameInfo.teams spot
+                //If it's 'g', put it in the general scoreVars instead of team.scoreboard @Todo fix the scoreVars scoreBoard thing.
+                for (key of Object.keys(newScoreBoards)) {
+                    if (key == "g") {
+                        gameInfo.scoreVars = object.g;
+                    } else {
+                        gameInfo.teams[key].scoreBoard = newScoreBoards[key];
+                    }
+                }
+
                 req.app.locals.scryActiveGameDB.put(gameInfo).then((result) => {
-                    clearCache(result.joinCode);
-                    response.scoreVars = gameInfo.scoreVars;
+                    clearCache(gameInfo.joinCode);
+                    //@todo put something useful as a response for the game runner here
+                    response.teams = gameInfo.teams;
+                    response.scoreBoard = gameInfo.scoreVars;
                     sendResponse();
                 });
             });
@@ -340,6 +363,7 @@ router.post("/gameControllerCommand", (req, res) => {
                       //check if there's a currentEvent object on each entry under teams, and remove it if so
                       if (Object.hasOwn(key, "currentEvent")) {
                           key.currentEvent = {};
+                          //@TODO this might be wrong? that key.blah might be relative, and it has to be gameInfo.blahblahfullpath
                       }
                   }
                 }

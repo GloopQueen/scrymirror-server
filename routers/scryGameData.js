@@ -84,9 +84,10 @@ router.post("/", (req, res) => {
 
 
                     response.eventNum = gameInfo.eventNum;
-                    response.scoreVars = gameInfo.scoreVars;
+                    //response.scoreVars = gameInfo.scoreVars; Moving to piggy back on teams logic down below
                     response.isActive = gameInfo.isActive;
                     response.gameOwnerName = gameInfo._id;
+                    //@todo you can probably get rid of this being fullUpdate we just always do it.
                     if (req.body.fullUpdate == true) {
                         //check if team behavior is active
                         // if so, get player info (find out exact location)
@@ -125,6 +126,7 @@ router.post("/", (req, res) => {
     }
 
     //prepares response, accounting for Team behavior.
+    //I forget why this is a separate function other than the fact it's a turducken of stuff
     function prepareResponse() {
         const isEmpty = obj => Object.keys(obj).length === 0;
 
@@ -135,6 +137,8 @@ router.post("/", (req, res) => {
           if (Object.hasOwn(gameInfo.players[playerNum], "teamNumber")) {
               const playerTeamNumber = gameInfo.players[playerNum].teamNumber;
               console.log(`Looks like player is on ${playerTeamNumber}.`);
+              response.yourTeamName = gameInfo.teams[playerTeamNumber].name;
+
               //if the player is on a team, check if there's a team-specific Event
               if (isEmpty(gameInfo.teams[playerTeamNumber].currentEvent)) {
                   //if not, tell them it's not their turn.
@@ -143,6 +147,18 @@ router.post("/", (req, res) => {
                   //if yes, return the team-specific Event.
                   response.currentEvent = gameInfo.teams[playerTeamNumber].currentEvent;
               }
+
+              //If the player is on a team, check if there's a team-specific scoreBoard
+              if (isEmpty(gameInfo.teams[playerTeamNumber].scoreBoard)) {
+                  //if not, return the generic scoreBoard.
+                  response.scoreVars = gameInfo.scoreVars;
+                  //console.log("empty scoreboard logic.");
+              } else {
+                  //if yes, return the team-specific scoreBoard.
+                  response.scoreVars = gameInfo.teams[playerTeamNumber].scoreBoard;
+                  //console.log("populated scoreboard logic.");
+              }
+
           } else {
               //If the player isn't on a team, check if there's general event data.
               console.log("looks like player is not on a team.");
