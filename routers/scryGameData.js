@@ -4,7 +4,7 @@ const router = express.Router();
 //This Post route is for supplying basic game data to players.
 //@TODO: Make this reject if they lack a PlayerID. But only after we establish the newplayer route.
 router.post("/", (req, res) => {
-    console.log("beep.");
+    //console.log("beep.");
     //Sets up some variables. gameInfo will be what it gets from server/cache about the requested game's state.
     //Response is what's ultimately sent to the client.
     let gameInfo = {};
@@ -32,6 +32,7 @@ router.post("/", (req, res) => {
     // Yank any whoopsie spaces
     // TODO: Sure could use some more filtering here girlypop
     let joinCode = req.body.joinCode.replace(" ", "");
+
 
     //Check if we already have this game's state cached, and if so, return it
     if (Object.hasOwn(req.app.locals.scryActiveGameCache, joinCode)) {
@@ -131,12 +132,12 @@ router.post("/", (req, res) => {
         const isEmpty = obj => Object.keys(obj).length === 0;
 
       if (Object.hasOwn(gameInfo, "teams")) {
-          console.log("Running teams logic.");
+          //console.log("Running teams logic.");
           const playerNum = req.body.playerID;
           //Check if the player is on a team
           if (Object.hasOwn(gameInfo.players[playerNum], "teamNumber")) {
               const playerTeamNumber = gameInfo.players[playerNum].teamNumber;
-              console.log(`Looks like player is on ${playerTeamNumber}.`);
+              //console.log(`Looks like player is on ${playerTeamNumber}.`);
               response.yourTeamName = gameInfo.teams[playerTeamNumber].name;
 
               //if the player is on a team, check if there's a team-specific Event
@@ -161,7 +162,7 @@ router.post("/", (req, res) => {
 
           } else {
               //If the player isn't on a team, check if there's general event data.
-              console.log("looks like player is not on a team.");
+              //console.log("looks like player is not on a team.");
               if (isEmpty(gameInfo.currentEvent)) {
                   response.notYourTurn = true;
               } else {
@@ -356,7 +357,7 @@ router.put("/new", (req, res) => {
         console.log("Possible Join Code Issue. Error:");
         console.log(error);
         response.error = true;
-        response.msg = "Your joinCode made the server mad. Make sure theformat is ABCDEF, or ABCDEF-GHI.";
+        response.msg = "Your joinCode made the server mad. Make sure the format is ABCDEF, or ABCDEF-GHI.";
         sendResponse();
         return;
     }

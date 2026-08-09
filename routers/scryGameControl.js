@@ -179,7 +179,7 @@ router.post("/gameControllerCommand", (req, res) => {
                     newTeams[tempPos].members = [];
                     newTeams[tempPos].scoreBoard = {};
                     newTeams[tempPos].currentEvent = {};
-                    newTeams[tempPos].name = `${tempPos}`; //@Todo proper name code
+                    newTeams[tempPos].name = `Team ${tempPos}`; //@Todo proper name code
                     newTeams[tempPos].size = 0;  //@Todo Properly implement max team sizes
                     tempPos++;
                 });
@@ -359,11 +359,11 @@ router.post("/gameControllerCommand", (req, res) => {
 
                 //Remove currentEvent data for each team, if any.
                 if (Object.hasOwn(gameInfo, "teams")) {
+
                   for (key of Object.keys(gameInfo.teams)) {
                       //check if there's a currentEvent object on each entry under teams, and remove it if so
-                      if (Object.hasOwn(key, "currentEvent")) {
-                          key.currentEvent = {};
-                          //@TODO this might be wrong? that key.blah might be relative, and it has to be gameInfo.blahblahfullpath
+                      if (Object.hasOwn(gameInfo.teams[key], "currentEvent")) {
+                          gameInfo.teams[key].currentEvent = {};
                       }
                   }
                 }
