@@ -354,8 +354,12 @@ router.post("/gameControllerCommand", (req, res) => {
                 gameInfo.currentAnswersMap = []; //can probably be deleted.
                 //Remove answer data from each player entry.
                 for (key of Object.keys(gameInfo.players)) {
-                    key.answer = {};
+                    key.answer = {}; //BB Girl I think that's wrooooonggggg
+                    gameInfo.players[key].answer = {};
                 }
+
+                //Remove game info for General Audience.
+                gameInfo.currentEvent = {};
 
                 //Remove currentEvent data for each team, if any.
                 if (Object.hasOwn(gameInfo, "teams")) {
