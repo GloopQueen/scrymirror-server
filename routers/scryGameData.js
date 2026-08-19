@@ -252,9 +252,11 @@ router.put("/", (req, res) => {
                     console.log(
                         `New Answer on ${gameInfo._id}'s Game, Event #${gameInfo.eventNum}, from ${submitterIDForTheLog}.`,
                     );
+                    //Update cache to reflect
+                    req.app.locals.scryActiveGameCache[req.body.joinCode] = gameInfo;
 
                     //Delete cache, if it exists.
-                    if (
+                    /*if (
                         Object.hasOwn(
                             req.app.locals.scryActiveGameCache,
                             req.body.joinCode,
@@ -263,7 +265,7 @@ router.put("/", (req, res) => {
                         delete req.app.locals.scryActiveGameCache[
                             req.body.joinCode
                         ];
-                    }
+                        } */ //Dear Princess Celestia I learned a lot about database stampedes today
 
                     sendResponse(); //answer finally
                 })
