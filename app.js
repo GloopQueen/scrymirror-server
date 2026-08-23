@@ -24,6 +24,10 @@ app.locals.scryFinishedGameDB = new PouchDB(couchDBURL + "scryfinishedgamedb"); 
 //Game data is cached in here by join code, to prevent unnecessary database slamming.
 app.locals.scryActiveGameCache = {};
 
+//"Dead" games are listed here by join code, to tell clients when we're done and to avoid reusing codes.
+app.locals.scryCodeGraveyard = {};
+
+
 //Poke the DBs just to make sure we're up
 app.locals.scryKeyDB.info().then((info) => {
     console.log(`Connected to Key DB, which has ${info.doc_count} entries.`);
@@ -33,6 +37,39 @@ app.locals.scryActiveGameDB.info().then((info) => {
         `Connected to Active Games DB, which has ${info.doc_count} entries.`,
     );
 });
+app.locals.scryFinishedGameDB.info().then((info) => {
+    console.log(
+        `Connected to Finished Games DB, which has ${info.doc_count} entries.`,
+    );
+});
+
+//Load the code graveyard
+app.locals.scryFinishedGameDB
+    .find({
+        selector: {
+            _id: "scrycodegraveyard",
+        },
+    })
+    .then((result) => {
+      if (result.docs.length == 1) {
+          app.locals.scryCodeGraveyard = result.docs[0];
+          const deadCodeCount = Object.keys(app.locals.scryCodeGraveyard).length;
+          console.log(`Loaded Graveyard from Finished Games DB with ${deadCodeCount} entries.`);
+      } else {
+          console.log("Possible issue loading graveyard. (Spooky!)");
+          console.log(result);
+      }
+    })
+    .catch((err) => {
+        console.log("Issue connecting to graveyard.");
+        console.log(err);
+    });
+
+
+
+
+
+
 
 //temporary while I move everything over
 app.locals.debug = {};

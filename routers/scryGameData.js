@@ -30,8 +30,21 @@ router.post("/", (req, res) => {
     }
 
     // Yank any whoopsie spaces
-    // TODO: Sure could use some more filtering here girlypop
+    // @TODO: Sure could use some more filtering here girlypop
     let joinCode = req.body.joinCode.replace(" ", "");
+
+    //Check that that game isn't in the graveyard.
+    //strip the -XYZ if it exists
+    const shortJoinSplit = joinCode.split("-");
+    const shortJoinCode = shortJoinSplit[0];
+    //check if it's in the graveyard
+    if (Object.hasOwn((req.app.locals.scryCodeGraveyard), shortJoinCode)) {
+        response.sheDied = true;
+        response.error = true;
+        response.msg = "This game has ended.";
+        sendResponse();
+        return;
+    }
 
 
     //Check if we already have this game's state cached, and if so, return it
@@ -200,6 +213,21 @@ router.put("/", (req, res) => {
         msg: "",
     };
 
+    //Check that that game isn't in the graveyard.
+    if (Object.hasOwn(req.body, "joinCode")) {
+        //strip the -XYZ if it exists
+        const shortJoinsplit = req.body.joinCode.split("-");
+        const shortJoinCode = shortJoinsplit[0];
+        //check if it's in the graveyard
+        if (Object.hasOwn((req.app.locals.scryCodeGraveyard), shortJoinCode)) {
+            response.sheDied = true;
+            response.error = true;
+            response.msg = "This game has ended.";
+            sendResponse();
+            return;
+        }
+    }
+
     // Check that there is a player ID
     if (!Object.hasOwn(req.body, "playerID")) {
         response.error = true;
@@ -325,10 +353,27 @@ router.put("/new", (req, res) => {
 
 
 
+
+
     let joinFullString = req.body.joinCode;
 
+
+    //Check that that game isn't in the graveyard.
+    //strip the -XYZ if it exists
+    const shortJoinSplit = joinFullString.split("-");
+    const shortJoinCode = shortJoinSplit[0];
+    //check if it's in the graveyard
+    if (Object.hasOwn((req.app.locals.scryCodeGraveyard), shortJoinCode)) {
+        response.sheDied = true;
+        response.error = true;
+        response.msg = "This game has ended.";
+        sendResponse();
+        return;
+    }
+
+
     //Filter if it's a six-digit standard code, or a ten digit with a team code.
-    //Wrapping this in a try/catch in lieu of proper validation lol this is naughty
+    //@todo - Fix! Wrapping this in a try/catch in lieu of proper validation lol this is naughty
     try {
         //console.log("marco");
         //console.log(joinFullString.length);
@@ -410,10 +455,10 @@ router.put("/new", (req, res) => {
                 if (teamJoinCode.length > 1) {
                     console.log("join code loop initiating.");
                     if (Object.hasOwn(gameInfo.teams, "joinMode")) {
-                      console.log("passed flag one.");
+                      //console.log("passed flag one.");
                       // Check if mode is set to uniqueCodes
                         if (gameInfo.teams.joinMode == "uniqueCodes") {
-                            console.log("passed flag two.");
+                            //console.log("passed flag two.");
                           // iterate over each possible team number
                           //  if it exists, check if number.joincode matches teamJoinCode
                           //      if so, add it then exit loop

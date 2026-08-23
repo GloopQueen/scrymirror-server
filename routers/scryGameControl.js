@@ -111,7 +111,8 @@ router.post("/gameControllerCommand", (req, res) => {
     }
 
     //Functions to start and stop a Game
-    //TODO: Start and stop currently play dangerous with assuming ActiveGamesDB matches isRunning on the KeyDB.
+    //@TODO: Start and stop currently play dangerous with assuming ActiveGamesDB matches isRunning on the KeyDB.
+    //   ^--- hey Past Me, what the hell does this mean
     function startGame() {
         //Get mad if there's no team setup info.
         if (req.body.teamCount > 0 && !Object.hasOwn(req.body, "joinMode")) {
@@ -142,7 +143,14 @@ router.post("/gameControllerCommand", (req, res) => {
             //Get a game running
             //Make a new active game DB entry with a date.
             const d = Date.now();
-            const newCode = generateCode(6);
+            let newCode = generateCode(6);
+
+            //Check if new code is in the graveyard
+            while (Object.hasOwn((req.app.locals.scryCodeGraveyard), newCode)) {
+                console.log(`Whoops, ${newCode} has been used.  Hey Gloop clean out the graveyard.`);
+                newCode = generateCode(6);
+            };
+
             newGameInfo = {
                 _id: req.body.creatorName,
                 creationTime: d,
@@ -193,9 +201,13 @@ router.post("/gameControllerCommand", (req, res) => {
                 response.teams = newGameInfo.teams;
             }
             //TODO: hey this might throw an error!
-            //TODO: have it query the database first for a join code of that name.
+            //@TODO: have it query the database first for a join code of that name.
             //Verify code doesn't already exist.
             //It's a one in six thousand chance which is actually higher than I thought??? wow
+
+
+
+            // Check agains the active game database.
             req.app.locals.scryActiveGameDB
                 .find({
                     selector: {
@@ -263,6 +275,7 @@ router.post("/gameControllerCommand", (req, res) => {
                                             console.log(
                                                 `Game To Remove:${result._id}`,
                                             );
+                                            updateGraveyard(result.joinCode);
                                             sendResponse(); //answer finally
                                         })
                                         .catch((err) => {
@@ -296,6 +309,44 @@ router.post("/gameControllerCommand", (req, res) => {
             response.msg = "There's no game active for this key owner.";
             sendResponse();
         }
+
+    //Function to add the code to the graveyard
+        function updateGraveyard(gameCode) {
+          req.app.locals.scryFinishedGameDB
+              .find({
+                  selector: {
+                      _id: "scrycodegraveyard",
+                  },
+              })
+              .then((result) => {
+                if (result.docs.length == 1) {
+                    let graveyardObject = result.docs[0];
+                    //Create a new graveyard entry list stamped with the current time
+                    graveyardObject[gameCode] = Date.now();
+                    //Stick it up onto the server
+                    req.app.locals.scryFinishedGameDB
+                        .put(graveyardObject)
+                        .then((result) => {
+                            //cache it locally
+                            req.app.locals.scryCodeGraveyard = graveyardObject;
+                            //report success
+                            console.log(`Saved ${gameCode} to the graveyard.`);
+                        })
+                        .catch((err) => {
+                            console.log("Issue saving to graveyard");
+                            console.log(err);
+                        })
+                } else {
+                    console.log("Possible issue loading graveyard. (Spooky!)");
+                    console.log(result);
+                }
+              })
+              .catch((err) => {
+                  console.log("Can't save dead code: Issue connecting to graveyard.");
+                  console.log(err);
+              });
+        };
+
     }
 
     //set Scores
