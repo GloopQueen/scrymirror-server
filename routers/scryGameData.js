@@ -61,7 +61,15 @@ router.post("/", (req, res) => {
             return;
         }
 
+        //if they exist (and they should if the event is active), include startEpoch and endEpoch.
+        if (Object.hasOwn(gameInfo, "startEpoch")) {
+            response.startEpoch = gameInfo.startEpoch;
+            response.endEpoch = gameInfo.endEpoch;
+        }
+
+
         response.eventNum = gameInfo.eventNum;
+        response.scoreBoardNum = gameInfo.scoreBoardNum;
         response.scoreVars = gameInfo.scoreVars;
         response.isActive = gameInfo.isActive;
         response.gameOwnerName = gameInfo._id;
@@ -204,7 +212,6 @@ router.post("/", (req, res) => {
 
 
 //The PUT route is for players to supply an Answer to an Event.
-// @TODO: update to attach to the playerID. Also reject if there's no playerID.
 router.put("/", (req, res) => {
     let gameInfo = {};
     let newAnswer = {};

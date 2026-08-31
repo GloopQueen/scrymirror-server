@@ -157,11 +157,14 @@ router.post("/gameControllerCommand", (req, res) => {
                 joinCode: newCode,
                 currentEvent: {},
                 eventNum: 0,
+                scoreBoardNum: 0,
                 isActive: false,
                 currentAnswersMap: [],
                 scoreVars: {},
                 eventArchive: {},
                 players: {},
+                timeLimit: 30,
+                startDelay: 20
             };
 
             //Optional Teams Setup Stuff
@@ -369,18 +372,25 @@ router.post("/gameControllerCommand", (req, res) => {
                 //Iterate over newScoreBoards. For each entry that exists, put that data in the matching gameInfo.teams spot
                 //If it's 'g', put it in the general scoreVars instead of team.scoreboard @Todo fix the scoreVars scoreBoard thing.
                 for (key of Object.keys(newScoreBoards)) {
-                    if (key == "g") {
+                    if (key == "g" || key == "G ") {
                         gameInfo.scoreVars = object.g;
                     } else {
                         gameInfo.teams[key].scoreBoard = newScoreBoards[key];
                     }
                 }
 
+                //Iterate the scoreboard number to help the clients tell shit apart
+                gameInfo.scoreBoardNum = gameInfo.scoreBoardNum + 1;
+
+                //Update the entry
                 req.app.locals.scryActiveGameDB.put(gameInfo).then((result) => {
-                    clearCache(gameInfo.joinCode);
+                    //clearCache(gameInfo.joinCode);
+                    //Update cache.
+                    req.app.locals.scryActiveGameCache[gameInfo.joinCode] = gameInfo;
                     //@todo put something useful as a response for the game runner here
                     response.teams = gameInfo.teams;
                     response.scoreBoard = gameInfo.scoreVars;
+                    response.scoreBoardNum = gameInfo.scoreBoardNum;
                     sendResponse();
                 });
             });
@@ -443,6 +453,11 @@ router.post("/gameControllerCommand", (req, res) => {
                     });
                 } else {
                     gameInfo.currentEvent = object;
+                }
+
+                //Adjust time, if present
+                if (Object.hasOwn(object, "timeLimit")) {
+                    gameInfo.timeLimit = object.timeLimit;
                 }
 
 
@@ -515,6 +530,18 @@ router.post("/gameControllerCommand", (req, res) => {
                     sendResponse();
                 } else {
                     gameInfo.isActive = isRunningChange;
+                    //Deletes the epoch info if we're stopping, creates it if we're starting
+                    if (isRunningChange == true) {
+                        const epochSeconds = Math.floor(Date.now() / 1000);
+                        gameInfo.startEpoch = epochSeconds + gameInfo.startDelay;
+                        gameInfo.endEpoch = epochSeconds + gameInfo.timeLimit + gameInfo.startDelay;
+                    }
+                    if (isRunningChange == false) {
+                        delete gameInfo.startEpoch;
+                        delete gameInfo.endEpoch;
+                    }
+
+
                     req.app.locals.scryActiveGameDB
                         .put(gameInfo)
                         .then((result) => {
