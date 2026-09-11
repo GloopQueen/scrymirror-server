@@ -192,7 +192,7 @@ router.post("/", (req, res) => {
           }
       } else {
         //if we're not doing any team nonsense, just return as normal.
-          console.log("Not running teams logic.");
+          //console.log("Not running teams logic.");
           response.currentEvent = gameInfo.currentEvent;
       }
     }

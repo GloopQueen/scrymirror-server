@@ -164,7 +164,7 @@ router.post("/gameControllerCommand", (req, res) => {
                 eventArchive: {},
                 players: {},
                 timeLimit: 30,
-                startDelay: 20
+                startDelay: 7
             };
 
             //Optional Teams Setup Stuff
@@ -179,7 +179,7 @@ router.post("/gameControllerCommand", (req, res) => {
                     //Bail and start over if we get bad luck and any match
                     if (checkForDuplicates(newJoinCodes)) {
                         newJoinCodes = [];
-                        i = 0;
+                        i = 1;
                     }
                 }
                 //Apply 'em and flesh out the team structure
@@ -360,24 +360,40 @@ router.post("/gameControllerCommand", (req, res) => {
                 const newScoreBoards = object;
                 //Iterate over existing scoreboards
                 //If existing data, make it an empty object
-                for (key of Object.keys(gameInfo.teams)) {
-                    //console.log(key);
-                    //check if there's a currentEvent object on each entry under teams, and remove it if so
-                    if (Object.hasOwn(gameInfo.teams[key], "scoreBoard")) {
-                        //console.log("beep");
-                        key.scoreBoard = {}; //Might not actually do anything
-                        gameInfo.teams[key].scoreBoard = {};
-                    }
+
+                //Complain if it's a teams update on a non-teams game without crashing
+                if (Object.hasOwn(object, "1") && !(Object.hasOwn(gameInfo, "teams"))) {
+                    response.msg = "Error, looks like you're trying to update more teams on a no-teams game.";
+                    response.error = true;
+                    return;
                 }
-                //Iterate over newScoreBoards. For each entry that exists, put that data in the matching gameInfo.teams spot
-                //If it's 'g', put it in the general scoreVars instead of team.scoreboard @Todo fix the scoreVars scoreBoard thing.
-                for (key of Object.keys(newScoreBoards)) {
-                    if (key == "g" || key == "G ") {
-                        gameInfo.scoreVars = object.g;
-                    } else {
-                        gameInfo.teams[key].scoreBoard = newScoreBoards[key];
-                    }
+
+
+                //Update based on Teams, if present, otherwise edit scoreboard on the "top level."
+                if (Object.hasOwn(gameInfo, "teams")) {
+
+                  for (key of Object.keys(gameInfo.teams)) {
+                      //check if there's a currentEvent object on each entry under teams, and remove it if so
+                      if (Object.hasOwn(gameInfo.teams[key], "scoreBoard")) {
+                          //console.log("beep");
+                          key.scoreBoard = {}; //Might not actually do anything
+                          gameInfo.teams[key].scoreBoard = {};
+                      }
+                  }
+                  //Iterate over newScoreBoards. For each entry that exists, put that data in the matching gameInfo.teams spot
+                  //If it's 'g', put it in the general scoreVars instead of team.scoreboard @Todo fix the scoreVars scoreBoard thing.
+                  for (key of Object.keys(newScoreBoards)) {
+                      if (key == "g" || key == "G ") {
+                          gameInfo.scoreVars = object.g;
+                      } else {
+                          gameInfo.teams[key].scoreBoard = newScoreBoards[key];
+                      }
+                  }
+                } else { //handling for a "no teams" game.
+                    gameInfo.scoreVars = object.g
                 }
+
+
 
                 //Iterate the scoreboard number to help the clients tell shit apart
                 gameInfo.scoreBoardNum = gameInfo.scoreBoardNum + 1;
